@@ -201,7 +201,13 @@ export function StayCollectingView({
         tripId={tripId}
         participantId={myParticipantId}
         editing={editing}
-        onSaved={() => {}}
+        onSaved={(saved) =>
+          setAccommodations((prev) =>
+            prev.some((a) => a.id === saved.id)
+              ? prev.map((a) => (a.id === saved.id ? saved : a))
+              : [...prev, saved].sort((a, b) => a.created_at.localeCompare(b.created_at))
+          )
+        }
       />
 
       <Modal

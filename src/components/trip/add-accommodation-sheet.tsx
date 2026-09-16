@@ -30,7 +30,7 @@ export function AddAccommodationSheet({
   tripId: string;
   participantId: string;
   editing: Accommodation | null;
-  onSaved: () => void;
+  onSaved: (saved: Accommodation) => void;
 }) {
   const { showToast } = useToast();
   const [loadingPreview, setLoadingPreview] = useState(false);
@@ -94,11 +94,13 @@ export function AddAccommodationSheet({
         note: values.note || null,
       };
 
-      const { error } = editing
-        ? await supabase.from("accommodations").update(payload).eq("id", editing.id)
+      const { data, error } = editing
+        ? await supabase.from("accommodations").update(payload).eq("id", editing.id).select().single()
         : await supabase
             .from("accommodations")
-            .insert({ ...payload, created_by_participant_id: participantId });
+            .insert({ ...payload, created_by_participant_id: participantId })
+            .select()
+            .single();
 
       if (error) {
         const code = Object.keys(ERROR_MESSAGES).find((k) => error.message.includes(k));
@@ -107,7 +109,9 @@ export function AddAccommodationSheet({
 
       showToast(editing ? "숙소 정보를 수정했어요." : "숙소 후보를 추가했어요.");
       reset();
-      onSaved();
+      // Realtime also delivers this change, but relying on it alone races the
+      // subscription's own setup — reflect our own write immediately instead.
+      onSaved(data);
       onClose();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "저장하지 못했어요.", "error");
