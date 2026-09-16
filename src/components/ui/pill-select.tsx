@@ -11,11 +11,13 @@ export function PillSelect<T extends string | number>({
   columns?: number;
   ariaLabel: string;
 }) {
+  const dense = (columns ?? 0) >= 4;
+
   return (
     <div
       role="radiogroup"
       aria-label={ariaLabel}
-      className={columns ? "grid gap-2" : "flex flex-wrap gap-2"}
+      className={columns ? "grid gap-1.5" : "flex flex-wrap gap-2"}
       style={columns ? { gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` } : undefined}
     >
       {options.map((opt) => {
@@ -27,7 +29,9 @@ export function PillSelect<T extends string | number>({
             role="radio"
             aria-checked={selected}
             onClick={() => onChange(opt.value)}
-            className={`min-h-11 rounded-full border px-4 text-sm font-semibold transition-colors ${
+            className={`min-h-11 whitespace-nowrap rounded-xl border font-semibold transition-colors ${
+              dense ? "px-1 text-xs" : "px-4 text-sm"
+            } ${
               selected
                 ? "border-primary bg-primary text-on-primary"
                 : "border-hairline bg-surface text-ink-soft hover:bg-primary-soft"

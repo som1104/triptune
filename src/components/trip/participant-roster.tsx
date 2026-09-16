@@ -25,30 +25,43 @@ export function ParticipantRoster({
 
   useEffect(() => {
     const supabase = createClient();
-    const channel = supabase
-      .channel(`participants-${tripId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "participants", filter: `trip_id=eq.${tripId}` },
-        (payload) => {
-          setParticipants((prev) => {
-            if (payload.eventType === "INSERT") {
-              const next = payload.new as Participant;
-              if (prev.some((p) => p.id === next.id)) return prev;
-              return [...prev, next].sort((a, b) => a.joined_at.localeCompare(b.joined_at));
-            }
-            if (payload.eventType === "UPDATE") {
-              const next = payload.new as Participant;
-              return prev.map((p) => (p.id === next.id ? next : p));
-            }
-            return prev;
-          });
-        }
-      )
-      .subscribe();
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let cancelled = false;
+
+    // Postgres Changes authorization is enforced per-message using the JWT
+    // attached to the realtime socket. That attachment happens async after
+    // sign-in, so subscribing before the session loads leaves the channel
+    // reporting SUBSCRIBED while RLS silently drops every event. Awaiting
+    // the session first guarantees the socket is authenticated before we
+    // start listening.
+    supabase.auth.getSession().then(() => {
+      if (cancelled) return;
+      channel = supabase
+        .channel(`participants-${tripId}`)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "participants", filter: `trip_id=eq.${tripId}` },
+          (payload) => {
+            setParticipants((prev) => {
+              if (payload.eventType === "INSERT") {
+                const next = payload.new as Participant;
+                if (prev.some((p) => p.id === next.id)) return prev;
+                return [...prev, next].sort((a, b) => a.joined_at.localeCompare(b.joined_at));
+              }
+              if (payload.eventType === "UPDATE") {
+                const next = payload.new as Participant;
+                return prev.map((p) => (p.id === next.id ? next : p));
+              }
+              return prev;
+            });
+          }
+        )
+        .subscribe();
+    });
 
     return () => {
-      supabase.removeChannel(channel);
+      cancelled = true;
+      if (channel) supabase.removeChannel(channel);
     };
   }, [tripId]);
 

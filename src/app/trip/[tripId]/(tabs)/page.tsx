@@ -1,11 +1,10 @@
-import Link from "next/link";
 import { getTripContext } from "@/lib/trip/get-trip-context";
 import { TripNotFound } from "@/components/trip/trip-not-found";
 import { TripAppBar } from "@/components/layout/trip-app-bar";
 import { CoverImage } from "@/components/ui/cover-image";
 import { InviteLinkCard } from "@/components/trip/invite-link-card";
 import { ParticipantRoster } from "@/components/trip/participant-roster";
-import { Button } from "@/components/ui/button";
+import { LinkButton } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatMonthKo, formatTripLength, TRIP_STATUS_LABEL } from "@/lib/trip/format";
 
@@ -35,11 +34,9 @@ export default async function TripHomePage({
               ? `확정 날짜: ${formatMonthKo(trip.confirmed_start_date)} · ${formatTripLength(trip.trip_days)}`
               : "그룹 합의가 진행되고 있어요."}
           </p>
-          <Link href={`/trip/${trip.id}/stay`}>
-            <Button variant="primary" fullWidth>
-              숙소 정하기로 이동
-            </Button>
-          </Link>
+          <LinkButton href={`/trip/${trip.id}/stay`} fullWidth>
+            숙소 정하기로 이동
+          </LinkButton>
         </div>
       </div>
     );
@@ -68,11 +65,9 @@ export default async function TripHomePage({
         />
 
         <div className="mt-auto pt-2">
-          <Link href={`/trip/${trip.id}/respond`}>
-            <Button variant="primary" size="lg" fullWidth>
-              {myStatus === "submitted" ? "내 날짜·취향 수정하기" : "내 날짜·취향 입력하기"}
-            </Button>
-          </Link>
+          <LinkButton href={`/trip/${trip.id}/respond`} size="lg" fullWidth>
+            {myStatus === "submitted" ? "내 날짜·취향 수정하기" : "내 날짜·취향 입력하기"}
+          </LinkButton>
         </div>
       </div>
     </div>
