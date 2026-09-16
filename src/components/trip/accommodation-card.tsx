@@ -36,7 +36,7 @@ export function AccommodationCard({
       </div>
       <div className="flex flex-col gap-2 p-4">
         <div className="flex items-start justify-between gap-2">
-          <p className="text-[16px] font-semibold text-ink">{accommodation.name}</p>
+          <p className="min-w-0 flex-1 break-words text-[16px] font-semibold text-ink">{accommodation.name}</p>
           {canManage && (
             <div className="relative shrink-0">
               <button

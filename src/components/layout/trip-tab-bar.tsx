@@ -35,11 +35,11 @@ export function TripTabBar({ tripId }: { tripId: string }) {
             key={tab.href}
             href={tab.href}
             aria-current={active ? "page" : undefined}
-            className={`flex min-h-16 flex-col items-center justify-center gap-1 text-xs font-semibold ${
-              active ? "text-ink" : "text-text-muted"
+            className={`flex min-h-16 flex-col items-center justify-center gap-1 border-t-2 text-xs font-semibold ${
+              active ? "border-ink text-ink" : "border-transparent text-text-muted"
             }`}
           >
-            <tab.icon size={22} aria-hidden="true" />
+            <tab.icon size={22} strokeWidth={active ? 2.5 : 2} aria-hidden="true" />
             {tab.label}
           </Link>
         );

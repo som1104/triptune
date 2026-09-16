@@ -1,3 +1,5 @@
+import { Check } from "lucide-react";
+
 export function PillSelect<T extends string | number>({
   options,
   value,
@@ -29,14 +31,15 @@ export function PillSelect<T extends string | number>({
             role="radio"
             aria-checked={selected}
             onClick={() => onChange(opt.value)}
-            className={`min-h-11 whitespace-nowrap rounded-xl border font-semibold transition-colors ${
+            className={`inline-flex min-h-11 items-center justify-center gap-1 whitespace-nowrap rounded-xl transition-colors ${
               dense ? "px-1 text-xs" : "px-4 text-sm"
             } ${
               selected
-                ? "border-primary bg-primary text-on-primary"
-                : "border-hairline bg-surface text-ink-soft hover:bg-primary-soft"
+                ? "border-2 border-primary bg-primary font-bold text-on-primary"
+                : "border border-hairline bg-surface font-medium text-ink-soft hover:bg-primary-soft"
             }`}
           >
+            {!dense && selected && <Check size={14} aria-hidden="true" />}
             {opt.label}
           </button>
         );

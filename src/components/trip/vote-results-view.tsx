@@ -99,8 +99,8 @@ export function VoteResultsView({
                 </div>
                 <div className="flex flex-col gap-2 p-4">
                   <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="text-[16px] font-semibold text-ink">{a.name}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="break-words text-[16px] font-semibold text-ink">{a.name}</p>
                       <p className="text-sm text-text-muted">
                         {a.location}
                         {perPerson != null && <> · 1인 약 {formatPrice(perPerson)}</>}
