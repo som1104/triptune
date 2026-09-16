@@ -410,7 +410,7 @@ declare
   v_token text;
 begin
   loop
-    v_token := translate(encode(gen_random_bytes(9), 'base64'), '+/=', 'xyz');
+    v_token := replace(gen_random_uuid()::text, '-', '');
     exit when not exists (select 1 from trips where invite_token = v_token);
   end loop;
 

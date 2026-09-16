@@ -15,7 +15,13 @@ export type TravelPace = "relaxed" | "balanced" | "packed";
 
 export type SpendingStyle = "value" | "balanced" | "experience";
 
-export interface Trip {
+// NOTE: these row shapes must be `type` aliases, not `interface`s.
+// Interfaces don't get TypeScript's implicit index-signature compatibility,
+// so they silently fail the `extends Record<string, unknown>` check that
+// supabase-js's generics rely on — every `.from()`/`.rpc()` call type then
+// falls back to `never` with no visible error at the type's declaration site.
+
+export type Trip = {
   id: string;
   host_user_id: string;
   title: string;
@@ -33,9 +39,9 @@ export interface Trip {
   created_at: string;
   updated_at: string;
   confirmed_at: string | null;
-}
+};
 
-export interface Participant {
+export type Participant = {
   id: string;
   trip_id: string;
   user_id: string;
@@ -43,18 +49,18 @@ export interface Participant {
   role: ParticipantRole;
   response_status: ResponseStatus;
   joined_at: string;
-}
+};
 
-export interface DateResponse {
+export type DateResponse = {
   id: string;
   trip_id: string;
   participant_id: string;
   date: string;
   availability: DateAvailability;
   updated_at: string;
-}
+};
 
-export interface PreferenceResponse {
+export type PreferenceResponse = {
   id: string;
   trip_id: string;
   participant_id: string;
@@ -66,9 +72,9 @@ export interface PreferenceResponse {
   spending_style: SpendingStyle;
   submitted_at: string;
   updated_at: string;
-}
+};
 
-export interface ConsensusSnapshot {
+export type ConsensusSnapshot = {
   id: string;
   trip_id: string;
   selected_start_date: string;
@@ -77,9 +83,9 @@ export interface ConsensusSnapshot {
   conflict_summary: Record<string, unknown>;
   participant_count: number;
   created_at: string;
-}
+};
 
-export interface Accommodation {
+export type Accommodation = {
   id: string;
   trip_id: string;
   created_by_participant_id: string;
@@ -92,18 +98,18 @@ export interface Accommodation {
   note: string | null;
   created_at: string;
   updated_at: string;
-}
+};
 
-export interface AccommodationVote {
+export type AccommodationVote = {
   id: string;
   trip_id: string;
   accommodation_id: string;
   participant_id: string;
   created_at: string;
   updated_at: string;
-}
+};
 
-export interface TripInviteInfo {
+export type TripInviteInfo = {
   trip_id: string;
   title: string;
   destination: string;
@@ -115,21 +121,22 @@ export interface TripInviteInfo {
   host_nickname: string;
   current_participant_count: number;
   already_joined: boolean;
-}
+};
 
-export interface VotingProgress {
+export type VotingProgress = {
   expected: number | null;
   voted: number;
   my_vote_accommodation_id: string | null;
-}
+};
 
 type TableDef<Row> = {
   Row: Row;
   Insert: Partial<Row>;
   Update: Partial<Row>;
+  Relationships: [];
 };
 
-export interface Database {
+export type Database = {
   public: {
     Tables: {
       trips: TableDef<Trip>;
@@ -224,4 +231,4 @@ export interface Database {
       spending_style: SpendingStyle;
     };
   };
-}
+};
