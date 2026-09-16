@@ -1,26 +1,76 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f4f8fe;
+  --surface: #ffffff;
+  --ink: #141414;
+  --ink-soft: #2b3044;
+  --text-muted: #6f7791;
+  --text-faint: #b5bacc;
+  --hairline: #dfe3f2;
+  --hairline-soft: #e6e9f5;
+  --field: #eef1ff;
+
+  --primary: #5b7cfa;
+  --primary-soft: #eef1ff;
+  --on-primary: #ffffff;
+
+  --conflict: #f6a56d;
+  --conflict-bg: #fffaf6;
+  --conflict-border: #fbd3b3;
+  --conflict-text: #b3511a;
+
+  --avatar-1: #5b7cfa;
+  --avatar-2: #f6a56d;
+  --avatar-3: #4fa3f7;
+  --avatar-4: #a78bfa;
+
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 @theme inline {
   --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-text-muted: var(--text-muted);
+  --color-text-faint: var(--text-faint);
+  --color-hairline: var(--hairline);
+  --color-hairline-soft: var(--hairline-soft);
+  --color-field: var(--field);
+  --color-primary: var(--primary);
+  --color-primary-soft: var(--primary-soft);
+  --color-on-primary: var(--on-primary);
+  --color-conflict: var(--conflict);
+  --color-conflict-bg: var(--conflict-bg);
+  --color-conflict-border: var(--conflict-border);
+  --color-conflict-text: var(--conflict-text);
+  --font-sans: var(--font-core);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
   background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--ink);
+  font-family: var(--font-core);
+  letter-spacing: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+:root {
+  --font-core: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard Variable",
+    Pretendard, "Malgun Gothic", "Noto Sans KR", sans-serif;
+}
+
+button {
+  font-family: inherit;
+  letter-spacing: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
 }
