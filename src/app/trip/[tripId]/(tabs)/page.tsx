@@ -1,12 +1,15 @@
 import { getTripContext } from "@/lib/trip/get-trip-context";
+import { createClient } from "@/lib/supabase/server";
 import { TripNotFound } from "@/components/trip/trip-not-found";
 import { TripAppBar } from "@/components/layout/trip-app-bar";
 import { CoverImage } from "@/components/ui/cover-image";
 import { InviteLinkCard } from "@/components/trip/invite-link-card";
 import { ParticipantRoster } from "@/components/trip/participant-roster";
+import { FinalTripView } from "@/components/trip/final-trip-view";
 import { LinkButton } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatMonthKo, formatTripLength, TRIP_STATUS_LABEL } from "@/lib/trip/format";
+import type { ConsensusSnapshot } from "@/lib/supabase/database.types";
 
 export default async function TripHomePage({
   params,
@@ -18,6 +21,33 @@ export default async function TripHomePage({
   if (!ctx) return <TripNotFound />;
 
   const { trip, participants, me } = ctx;
+
+  if (trip.status === "confirmed") {
+    const supabase = await createClient();
+    const [{ data: finalAccommodation }, { data: snapshot }] = await Promise.all([
+      trip.final_accommodation_id
+        ? supabase.from("accommodations").select("*").eq("id", trip.final_accommodation_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+      supabase
+        .from("consensus_snapshots")
+        .select("*")
+        .eq("trip_id", tripId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle<ConsensusSnapshot>(),
+    ]);
+
+    const summary = snapshot?.preference_summary as { summarySentence?: string } | undefined;
+
+    return (
+      <FinalTripView
+        trip={trip}
+        finalAccommodation={finalAccommodation ?? null}
+        participants={participants}
+        summarySentence={summary?.summarySentence ?? null}
+      />
+    );
+  }
 
   if (trip.status !== "collecting_responses") {
     return (

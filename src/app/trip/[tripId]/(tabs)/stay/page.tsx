@@ -4,6 +4,9 @@ import { TripNotFound } from "@/components/trip/trip-not-found";
 import { TripAppBar } from "@/components/layout/trip-app-bar";
 import { StageLocked } from "@/components/trip/stage-locked";
 import { StayCollectingView } from "@/components/trip/stay-collecting-view";
+import { VotingView } from "@/components/trip/voting-view";
+import { VoteResultsView } from "@/components/trip/vote-results-view";
+import { StayConfirmedView } from "@/components/trip/stay-confirmed-view";
 
 export default async function StayPage({
   params,
@@ -25,9 +28,10 @@ export default async function StayPage({
     );
   }
 
+  const supabase = await createClient();
+
   if (trip.status === "accommodation_collecting") {
     if (!me) return <TripNotFound />;
-    const supabase = await createClient();
     const { data: accommodations } = await supabase
       .from("accommodations")
       .select("*")
@@ -46,10 +50,55 @@ export default async function StayPage({
     );
   }
 
+  const { data: accommodations } = await supabase
+    .from("accommodations")
+    .select("*")
+    .eq("trip_id", tripId)
+    .order("created_at", { ascending: true });
+  const list = accommodations ?? [];
+
+  if (trip.status === "accommodation_voting") {
+    return (
+      <VotingView
+        tripId={tripId}
+        isHost={isHost}
+        accommodations={list}
+        confirmedParticipantCount={trip.confirmed_participant_count}
+      />
+    );
+  }
+
+  const { data: votes } = await supabase.from("accommodation_votes").select("*").eq("trip_id", tripId);
+
+  if (trip.status === "vote_result") {
+    return (
+      <VoteResultsView
+        tripId={tripId}
+        isHost={isHost}
+        accommodations={list}
+        votes={votes ?? []}
+        confirmedParticipantCount={trip.confirmed_participant_count}
+      />
+    );
+  }
+
+  // confirmed
+  const finalAccommodation = list.find((a) => a.id === trip.final_accommodation_id);
+  if (!finalAccommodation) {
+    return (
+      <div className="flex flex-1 flex-col">
+        <TripAppBar title="숙소 정하기" />
+        <StageLocked message="확정된 숙소 정보를 불러오지 못했어요." />
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-1 flex-col">
-      <TripAppBar title="숙소 정하기" />
-      <StageLocked message="다음 단계는 곧 준비될 예정이에요." />
-    </div>
+    <StayConfirmedView
+      finalAccommodation={finalAccommodation}
+      otherAccommodations={list.filter((a) => a.id !== finalAccommodation.id)}
+      votes={votes ?? []}
+      confirmedParticipantCount={trip.confirmed_participant_count}
+    />
   );
 }

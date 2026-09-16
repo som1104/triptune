@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Plus, Vote } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { TripAppBar } from "@/components/layout/trip-app-bar";
 import { Button } from "@/components/ui/button";
@@ -30,12 +31,15 @@ export function StayCollectingView({
   initialAccommodations: Accommodation[];
   confirmedParticipantCount: number | null;
 }) {
+  const router = useRouter();
   const { showToast } = useToast();
   const [accommodations, setAccommodations] = useState(initialAccommodations);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<Accommodation | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Accommodation | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [showStartVoting, setShowStartVoting] = useState(false);
+  const [startingVote, setStartingVote] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -80,6 +84,26 @@ export function StayCollectingView({
   const nicknameById = new Map(participants.map((p) => [p.id, p.nickname]));
   const myCount = accommodations.filter((a) => a.created_by_participant_id === myParticipantId).length;
   const canAddMore = accommodations.length < TOTAL_LIMIT && myCount < PER_PARTICIPANT_LIMIT;
+  const canStartVoting =
+    isHost &&
+    accommodations.length >= 2 &&
+    accommodations.length <= TOTAL_LIMIT &&
+    (confirmedParticipantCount ?? 0) >= 2;
+
+  async function startVoting() {
+    setStartingVote(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.rpc("start_voting", { p_trip_id: tripId });
+      if (error) throw new Error(error.message);
+      setShowStartVoting(false);
+      router.refresh();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "투표를 시작하지 못했어요.", "error");
+    } finally {
+      setStartingVote(false);
+    }
+  }
 
   async function handleDelete() {
     if (!deleteTarget) return;
@@ -135,7 +159,7 @@ export function StayCollectingView({
           <p className="text-xs text-text-muted">후보가 2개 이상이면 투표를 시작할 수 있어요.</p>
         )}
 
-        <div className="mt-auto pt-2">
+        <div className="mt-auto flex flex-col gap-2 pt-2">
           <Button
             variant={canAddMore ? "primary" : "soft"}
             size="lg"
@@ -150,11 +174,23 @@ export function StayCollectingView({
             숙소 후보 추가
           </Button>
           {!canAddMore && (
-            <p className="mt-2 text-center text-xs text-text-muted">
+            <p className="text-center text-xs text-text-muted">
               {myCount >= PER_PARTICIPANT_LIMIT
                 ? "1인당 최대 2개까지 등록할 수 있어요."
                 : "숙소 후보는 최대 5개까지 등록할 수 있어요."}
             </p>
+          )}
+          {isHost && (
+            <Button
+              variant="outline"
+              size="lg"
+              fullWidth
+              disabled={!canStartVoting}
+              icon={<Vote size={18} aria-hidden="true" />}
+              onClick={() => setShowStartVoting(true)}
+            >
+              숙소 투표 시작하기
+            </Button>
           )}
         </div>
       </div>
@@ -180,6 +216,22 @@ export function StayCollectingView({
           </Button>
           <Button fullWidth loading={deleting} onClick={handleDelete}>
             삭제
+          </Button>
+        </div>
+      </Modal>
+
+      <Modal
+        open={showStartVoting}
+        onClose={() => setShowStartVoting(false)}
+        title="투표를 시작할까요?"
+        description="투표를 시작하면 숙소 후보를 추가하거나 삭제할 수 없어요."
+      >
+        <div className="flex flex-col gap-2">
+          <Button variant="outline" fullWidth onClick={() => setShowStartVoting(false)}>
+            취소
+          </Button>
+          <Button fullWidth loading={startingVote} onClick={startVoting}>
+            투표 시작
           </Button>
         </div>
       </Modal>
