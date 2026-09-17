@@ -64,7 +64,7 @@ export function BottomSheet({
         className="flex max-h-[85dvh] w-full max-w-[480px] flex-col rounded-t-3xl bg-surface"
       >
         <div className="flex shrink-0 items-center justify-between px-5 pb-2 pt-4">
-          <h2 id="sheet-title" className="m-0 text-xl font-bold text-ink">
+          <h2 id="sheet-title" className="m-0 text-xl font-[650] text-ink">
             {title}
           </h2>
           <button

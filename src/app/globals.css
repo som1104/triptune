@@ -56,13 +56,20 @@ body {
   background: var(--background);
   color: var(--ink);
   font-family: var(--font-core);
+  font-weight: 450;
   letter-spacing: 0;
   -webkit-font-smoothing: antialiased;
 }
 
 :root {
-  --font-core: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard Variable",
-    Pretendard, "Malgun Gothic", "Noto Sans KR", sans-serif;
+  /* Hanken Grotesk (next/font, self-hosted) carries Latin text and numbers;
+     it has no Hangul glyphs, so Korean text falls through to Pretendard
+     Variable (loaded via CDN in the root layout), matching the source
+     design's own font stack. Both are variable fonts, so the design
+     system's fractional weights (450/600/650) actually render distinctly
+     instead of rounding to the nearest static weight. */
+  --font-core: var(--font-hanken), "Pretendard Variable", Pretendard, -apple-system,
+    "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
 }
 
 button {

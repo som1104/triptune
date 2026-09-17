@@ -42,7 +42,7 @@ export default async function JoinPage({
       <TripAppBar title="TRIPTUNE" />
       <CoverImage height={200}>
         <p className="m-0 mb-1.5 text-xs font-semibold text-white">초대를 받았어요</p>
-        <h2 className="m-0 text-2xl font-bold text-white">{data.title}</h2>
+        <h2 className="m-0 text-2xl font-[650] leading-[1.2] text-white">{data.title}</h2>
       </CoverImage>
 
       <div className="flex flex-1 flex-col gap-5 px-5 py-5">

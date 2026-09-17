@@ -65,8 +65,8 @@ export function VoteResultsView({
       <TripAppBar title="숙소 정하기" />
       <div className="flex flex-1 flex-col gap-4 px-5 py-5">
         <div>
-          <h2 className="m-0 mb-1 text-xl font-bold text-ink">투표 결과</h2>
-          <p className="m-0 text-sm text-text-muted">
+          <h2 className="m-0 mb-2 text-2xl font-[650] leading-[1.2] text-ink">투표 결과</h2>
+          <p className="m-0 font-[300] text-[15px] leading-[1.43] text-text-muted">
             {validVotes === 0 ? "아직 투표가 없어요." : `${validVotes}명이 투표했어요.`}
           </p>
         </div>

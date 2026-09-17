@@ -66,7 +66,7 @@ export function Modal({
         className="flex w-full max-w-sm flex-col gap-5 rounded-3xl bg-surface p-6"
       >
         <div>
-          <h2 id="modal-title" className="m-0 mb-2 text-xl font-bold text-ink">
+          <h2 id="modal-title" className="m-0 mb-2 text-xl font-[650] text-ink">
             {title}
           </h2>
           {description && <p className="m-0 text-sm leading-relaxed text-ink-soft">{description}</p>}

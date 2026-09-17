@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Vote } from "lucide-react";
+import { BedDouble, Plus, Vote } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { TripAppBar } from "@/components/layout/trip-app-bar";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ export function StayCollectingView({
   participants,
   initialAccommodations,
   confirmedParticipantCount,
+  contextChips,
 }: {
   tripId: string;
   myParticipantId: string;
@@ -30,6 +31,7 @@ export function StayCollectingView({
   participants: Participant[];
   initialAccommodations: Accommodation[];
   confirmedParticipantCount: number | null;
+  contextChips: string[];
 }) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -125,37 +127,65 @@ export function StayCollectingView({
   return (
     <div className="flex flex-1 flex-col">
       <TripAppBar title="숙소 정하기" />
-      <div className="flex flex-1 flex-col gap-4 px-5 py-5">
-        <div className="flex items-start justify-between gap-2">
+      <div className="flex flex-1 flex-col gap-5 px-5 py-4">
+        <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="m-0 mb-1 text-xl font-bold text-ink">숙소 후보 모으는 중</h2>
-            <p className="m-0 text-sm text-text-muted">
+            <h2 className="m-0 mb-2 text-[24px] font-[650] leading-[1.2] text-ink">
+              {accommodations.length === 0 ? "숙소 정하기" : "숙소 후보 모으는 중"}
+            </h2>
+            <p className="m-0 font-[300] text-[15px] leading-[1.43] text-text-muted">
               {accommodations.length === 0
-                ? "아직 등록된 숙소가 없어요."
+                ? "확정된 여행 방향에 맞는 숙소를 후보로 등록해주세요."
                 : `현재 ${accommodations.length}개의 숙소가 등록되었어요.`}
             </p>
           </div>
-          <Badge variant="primary">{accommodations.length} / {TOTAL_LIMIT}</Badge>
+          {accommodations.length > 0 && (
+            <Badge variant="primary">
+              {accommodations.length} / {TOTAL_LIMIT}
+            </Badge>
+          )}
         </div>
 
-        <div className="flex flex-col gap-3">
-          {accommodations.map((a) => (
-            <AccommodationCard
-              key={a.id}
-              accommodation={a}
-              creatorNickname={nicknameById.get(a.created_by_participant_id) ?? "알 수 없음"}
-              confirmedParticipantCount={confirmedParticipantCount}
-              canManage={isHost || a.created_by_participant_id === myParticipantId}
-              onEdit={() => {
-                setEditing(a);
-                setSheetOpen(true);
-              }}
-              onDelete={() => setDeleteTarget(a)}
-            />
-          ))}
-        </div>
+        {contextChips.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {contextChips.map((chip) => (
+              <Badge key={chip} variant="primary">
+                {chip}
+              </Badge>
+            ))}
+          </div>
+        )}
 
-        {accommodations.length < 2 && (
+        {accommodations.length === 0 ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 px-0 py-10 text-center">
+            <span className="flex h-[88px] w-[88px] items-center justify-center rounded-full bg-primary-soft text-primary">
+              <BedDouble size={36} aria-hidden="true" />
+            </span>
+            <p className="m-0 mt-2 text-[16px] font-semibold text-ink">아직 등록된 숙소가 없어요.</p>
+            <p className="m-0 text-[13px] text-text-muted">
+              전체 최대 5개 · 한 명당 최대 2개까지 등록할 수 있어요.
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {accommodations.map((a) => (
+              <AccommodationCard
+                key={a.id}
+                accommodation={a}
+                creatorNickname={nicknameById.get(a.created_by_participant_id) ?? "알 수 없음"}
+                confirmedParticipantCount={confirmedParticipantCount}
+                canManage={isHost || a.created_by_participant_id === myParticipantId}
+                onEdit={() => {
+                  setEditing(a);
+                  setSheetOpen(true);
+                }}
+                onDelete={() => setDeleteTarget(a)}
+              />
+            ))}
+          </div>
+        )}
+
+        {accommodations.length > 0 && accommodations.length < 2 && (
           <p className="text-xs text-text-muted">후보가 2개 이상이면 투표를 시작할 수 있어요.</p>
         )}
 

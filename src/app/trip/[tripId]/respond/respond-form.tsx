@@ -203,7 +203,7 @@ export function RespondForm({
               >
                 <ChevronLeft size={20} aria-hidden="true" />
               </button>
-              <p className="text-xl font-bold">
+              <p className="text-xl font-[650]">
                 {monthCursor.getFullYear()}년 {monthCursor.getMonth() + 1}월
               </p>
               <button

@@ -45,7 +45,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             key={t.id}
             role={t.variant === "error" ? "alert" : "status"}
             aria-live="polite"
-            className={`pointer-events-auto flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white shadow-lg ${
+            className={`pointer-events-auto flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white ${
               t.variant === "error" ? "bg-conflict-text" : "bg-ink"
             }`}
           >

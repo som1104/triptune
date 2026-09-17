@@ -217,6 +217,10 @@ export type Database = {
         Args: { p_trip_id: string };
         Returns: VotingProgress[];
       };
+      get_voting_completion: {
+        Args: { p_trip_id: string };
+        Returns: { participant_id: string; nickname: string }[];
+      };
       confirm_final_accommodation: {
         Args: { p_trip_id: string; p_accommodation_id: string };
         Returns: void;

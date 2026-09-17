@@ -27,7 +27,7 @@ export function FinalTripView({
       <TripAppBar title={trip.title} />
       <CoverImage height={260}>
         <p className="m-0 mb-1.5 text-xs font-semibold text-white">{trip.destination}</p>
-        <h2 className="m-0 text-3xl font-bold leading-tight text-white">{trip.title}</h2>
+        <h2 className="m-0 text-[32px] font-[650] leading-[1.13] text-white">{trip.title}</h2>
         {trip.confirmed_start_date && trip.confirmed_end_date && (
           <p className="m-0 mt-2 text-sm text-white/90">
             {formatDateKo(trip.confirmed_start_date)} – {formatDateKo(trip.confirmed_end_date)} ·{" "}
@@ -37,7 +37,7 @@ export function FinalTripView({
       </CoverImage>
 
       <div className="flex flex-1 flex-col gap-5 px-5 py-5">
-        <h3 className="m-0 text-xl font-bold text-ink">여행이 확정됐어요!</h3>
+        <h3 className="m-0 text-2xl font-[650] leading-[1.2] text-ink">여행이 확정됐어요!</h3>
 
         {summarySentence && (
           <div className="rounded-2xl bg-primary-soft p-4">

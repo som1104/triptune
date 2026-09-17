@@ -54,7 +54,7 @@ export function AccommodationCard({
                 <div
                   id={menuId}
                   role="menu"
-                  className="absolute right-0 top-11 z-10 w-36 overflow-hidden rounded-xl border border-hairline-soft bg-surface shadow-lg"
+                  className="absolute right-0 top-11 z-10 w-36 overflow-hidden rounded-2xl border border-hairline bg-surface"
                 >
                   <button
                     role="menuitem"

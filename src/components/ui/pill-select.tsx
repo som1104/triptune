@@ -31,7 +31,7 @@ export function PillSelect<T extends string | number>({
             role="radio"
             aria-checked={selected}
             onClick={() => onChange(opt.value)}
-            className={`inline-flex min-h-11 items-center justify-center gap-1 whitespace-nowrap rounded-xl transition-colors ${
+            className={`inline-flex min-h-11 items-center justify-center gap-1 whitespace-nowrap rounded-full transition-colors ${
               dense ? "px-1 text-xs" : "px-4 text-sm"
             } ${
               selected

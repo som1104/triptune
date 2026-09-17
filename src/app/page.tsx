@@ -60,7 +60,7 @@ export default function CreateTripPage() {
       <TripAppBar title="TRIPTUNE" />
       <CoverImage height={220}>
         <p className="m-0 mb-1.5 text-xs font-semibold text-white">Welcome</p>
-        <h2 className="m-0 text-2xl font-bold leading-tight text-white">
+        <h2 className="m-0 text-2xl font-[650] leading-[1.2] text-white">
           함께 가고 싶은
           <br />
           여행을 시작해요.

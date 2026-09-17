@@ -110,7 +110,7 @@ function FrozenConsensusView({ tripId, confirmedSnapshot, canReopen }: FrozenPro
         {summary.summarySentence && (
           <div className="rounded-3xl bg-primary p-6 text-on-primary">
             <p className="mb-2 text-xs font-semibold text-white/80">한 줄 요약</p>
-            <h2 className="m-0 text-xl font-bold leading-snug">{summary.summarySentence}</h2>
+            <h2 className="m-0 text-2xl font-[650] leading-[1.2]">{summary.summarySentence}</h2>
           </div>
         )}
         <div className="rounded-2xl border border-hairline-soft p-5">
@@ -215,7 +215,7 @@ function LiveConsensusView({
       <TripAppBar title="그룹 합의" />
       <div className="flex flex-1 flex-col gap-6 px-5 py-5">
         <div className="flex items-center justify-between">
-          <p className="text-sm text-text-muted">우리 그룹의 날짜와 취향을 모았어요.</p>
+          <p className="text-sm text-ink-soft">우리 그룹의 날짜와 취향을 모았어요.</p>
           <Badge variant="primary">
             {respondedCount}/{totalParticipants}명 응답
           </Badge>
@@ -262,7 +262,7 @@ function LiveConsensusView({
 
         <div className="rounded-3xl bg-primary p-6 text-on-primary">
           <p className="mb-2 text-xs font-semibold text-white/80">한 줄 요약</p>
-          <h2 className="m-0 text-xl font-bold leading-snug">{summary}</h2>
+          <h2 className="m-0 text-2xl font-[650] leading-[1.2]">{summary}</h2>
         </div>
 
         <section className="flex flex-col gap-3">

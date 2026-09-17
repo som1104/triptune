@@ -7,6 +7,8 @@ import { StayCollectingView } from "@/components/trip/stay-collecting-view";
 import { VotingView } from "@/components/trip/voting-view";
 import { VoteResultsView } from "@/components/trip/vote-results-view";
 import { StayConfirmedView } from "@/components/trip/stay-confirmed-view";
+import { formatShortDateKo } from "@/lib/trip/format";
+import type { ConsensusSnapshot } from "@/lib/supabase/database.types";
 
 export default async function StayPage({
   params,
@@ -32,11 +34,35 @@ export default async function StayPage({
 
   if (trip.status === "accommodation_collecting") {
     if (!me) return <TripNotFound />;
-    const { data: accommodations } = await supabase
-      .from("accommodations")
-      .select("*")
-      .eq("trip_id", tripId)
-      .order("created_at", { ascending: true });
+    const [{ data: accommodations }, { data: snapshot }] = await Promise.all([
+      supabase.from("accommodations").select("*").eq("trip_id", tripId).order("created_at", { ascending: true }),
+      supabase
+        .from("consensus_snapshots")
+        .select("*")
+        .eq("trip_id", tripId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle<ConsensusSnapshot>(),
+    ]);
+
+    const contextChips: string[] = [];
+    if (trip.confirmed_start_date && trip.confirmed_end_date) {
+      contextChips.push(
+        `${formatShortDateKo(trip.confirmed_start_date)} — ${formatShortDateKo(trip.confirmed_end_date)}`
+      );
+    }
+    contextChips.push(trip.destination);
+    const summary = snapshot?.preference_summary as
+      | { items?: Record<string, { classification: string }>; pace?: { mode: string | null } }
+      | undefined;
+    const prefLabel: Record<string, string> = { nature: "자연 중심", food: "맛집 중심", cafe: "카페 중심", activity: "활동 중심" };
+    if (summary?.items) {
+      for (const [key, item] of Object.entries(summary.items)) {
+        if (item.classification === "favored" && prefLabel[key]) contextChips.push(prefLabel[key]);
+      }
+    }
+    const paceLabel: Record<string, string> = { relaxed: "여유로운 일정", balanced: "적당한 일정", packed: "알찬 일정" };
+    if (summary?.pace?.mode) contextChips.push(paceLabel[summary.pace.mode]);
 
     return (
       <StayCollectingView
@@ -46,6 +72,7 @@ export default async function StayPage({
         participants={participants}
         initialAccommodations={accommodations ?? []}
         confirmedParticipantCount={trip.confirmed_participant_count}
+        contextChips={contextChips}
       />
     );
   }

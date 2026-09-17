@@ -55,7 +55,7 @@ export default async function TripHomePage({
         <TripAppBar title={trip.title} />
         <CoverImage height={200}>
           <p className="m-0 mb-1 text-xs font-semibold text-white">{trip.destination}</p>
-          <h2 className="m-0 text-2xl font-bold text-white">{trip.title}</h2>
+          <h2 className="m-0 text-2xl font-[650] leading-[1.2] text-white">{trip.title}</h2>
         </CoverImage>
         <div className="flex flex-1 flex-col gap-4 px-5 py-6">
           <Badge variant="primary">{TRIP_STATUS_LABEL[trip.status]}</Badge>
@@ -79,7 +79,7 @@ export default async function TripHomePage({
       <TripAppBar title="TRIPTUNE" />
       <CoverImage height={200}>
         <p className="m-0 mb-1 text-xs font-semibold text-white">{trip.destination}</p>
-        <h2 className="m-0 text-2xl font-bold text-white">{trip.title}</h2>
+        <h2 className="m-0 text-2xl font-[650] leading-[1.2] text-white">{trip.title}</h2>
         <p className="m-0 mt-1 text-xs text-white/90">
           {formatMonthKo(trip.candidate_start_date)} 중 · {formatTripLength(trip.trip_days)}
         </p>

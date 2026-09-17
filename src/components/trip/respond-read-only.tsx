@@ -49,7 +49,7 @@ export function RespondReadOnly({
         <Badge variant="muted">응답을 수정할 수 없는 단계예요.</Badge>
 
         <section className="flex flex-col gap-2">
-          <p className="text-xl font-bold text-ink">
+          <p className="text-xl font-[650] text-ink">
             {start.getFullYear()}년 {start.getMonth() + 1}월
           </p>
           <div className="grid grid-cols-7 gap-1.5">
@@ -77,7 +77,7 @@ export function RespondReadOnly({
             <section className="flex flex-col gap-3">
               <p className="text-base font-semibold text-ink">여행 취향</p>
               {PREFERENCE_FIELDS.map(({ key, label }) => (
-                <div key={key} className="flex items-center justify-between rounded-xl border border-hairline-soft px-4 py-3">
+                <div key={key} className="flex items-center justify-between rounded-2xl border border-hairline-soft px-4 py-3">
                   <span className="text-[15px] font-semibold text-ink">{label}</span>
                   <Badge variant="primary">{SCORE_LABEL[preference[key]]}</Badge>
                 </div>
@@ -85,11 +85,11 @@ export function RespondReadOnly({
             </section>
             <section className="flex flex-col gap-3">
               <p className="text-base font-semibold text-ink">여행 방식</p>
-              <div className="flex items-center justify-between rounded-xl border border-hairline-soft px-4 py-3">
+              <div className="flex items-center justify-between rounded-2xl border border-hairline-soft px-4 py-3">
                 <span className="text-[15px] font-semibold text-ink">일정 속도</span>
                 <Badge variant="primary">{PACE_LABEL[preference.pace]}</Badge>
               </div>
-              <div className="flex items-center justify-between rounded-xl border border-hairline-soft px-4 py-3">
+              <div className="flex items-center justify-between rounded-2xl border border-hairline-soft px-4 py-3">
                 <span className="text-[15px] font-semibold text-ink">소비 성향</span>
                 <Badge variant="primary">{SPENDING_LABEL[preference.spending_style]}</Badge>
               </div>
