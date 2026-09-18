@@ -5,7 +5,13 @@ import { Copy, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 
-export function InviteLinkCard({ inviteToken, tripTitle }: { inviteToken: string; tripTitle: string }) {
+export function InviteLinkCard({
+  inviteToken,
+  tripTitle,
+}: {
+  inviteToken: string;
+  tripTitle: string;
+}) {
   const { showToast } = useToast();
   const [url, setUrl] = useState<string | null>(null);
 
@@ -43,15 +49,25 @@ export function InviteLinkCard({ inviteToken, tripTitle }: { inviteToken: string
 
   return (
     <div className="rounded-2xl bg-primary-soft p-5">
-      <p className="mb-1.5 text-xs font-semibold text-ink-soft">초대 링크</p>
-      <p className="mb-4 break-all text-base font-semibold text-ink">
+      <p className="m-0 mb-1.5 text-xs font-semibold leading-[1.33] text-ink-soft">초대 링크</p>
+      <p className="m-0 mb-4 break-all text-base font-semibold text-ink">
         {url ?? `.../join/${inviteToken}`}
       </p>
       <div className="flex gap-2">
-        <Button variant="primary" icon={<Copy size={16} aria-hidden="true" />} fullWidth onClick={copyLink}>
+        <Button
+          variant="primary"
+          icon={<Copy size={16} aria-hidden="true" />}
+          className="min-w-0 flex-1"
+          onClick={copyLink}
+        >
           링크 복사
         </Button>
-        <Button variant="outline" icon={<Share2 size={16} aria-hidden="true" />} fullWidth onClick={share}>
+        <Button
+          variant="outline"
+          icon={<Share2 size={16} aria-hidden="true" />}
+          className="min-w-0 flex-1"
+          onClick={share}
+        >
           공유
         </Button>
       </div>

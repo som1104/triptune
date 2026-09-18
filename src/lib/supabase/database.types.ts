@@ -15,6 +15,11 @@ export type TravelPace = "relaxed" | "balanced" | "packed";
 
 export type SpendingStyle = "value" | "balanced" | "experience";
 
+export type Togetherness = "mostly_together" | "core_together" | "free_time";
+
+/** 숙소를 통째로 빌리는지, 객실을 여러 개 잡는지 */
+export type StayBookingMode = "whole" | "rooms";
+
 // NOTE: these row shapes must be `type` aliases, not `interface`s.
 // Interfaces don't get TypeScript's implicit index-signature compatibility,
 // so they silently fail the `extends Record<string, unknown>` check that
@@ -70,6 +75,10 @@ export type PreferenceResponse = {
   activity: number;
   pace: TravelPace;
   spending_style: SpendingStyle;
+  /** null on responses saved before 함께 다니는 정도 existed */
+  togetherness: Togetherness | null;
+  /** 꼭 반영할 점 — free text, never fed into any score */
+  note: string | null;
   submitted_at: string;
   updated_at: string;
 };
@@ -93,6 +102,10 @@ export type Accommodation = {
   name: string;
   image_url: string | null;
   location: string;
+  booking_mode: StayBookingMode;
+  /** rooms 모드일 때의 객실 구성. whole 이면 null. @see lib/trip/stay */
+  rooms: unknown;
+  /** 두 모드 모두 '합계' — 객실 구성에서 계산해 저장한다 */
   total_price: number;
   capacity: number;
   note: string | null;
@@ -179,6 +192,8 @@ export type Database = {
           p_activity: number;
           p_pace: TravelPace;
           p_spending_style: SpendingStyle;
+          p_togetherness: Togetherness;
+          p_note: string | null;
         };
         Returns: void;
       };
@@ -225,6 +240,14 @@ export type Database = {
         Args: { p_trip_id: string; p_accommodation_id: string };
         Returns: void;
       };
+      delete_trip: {
+        Args: { p_trip_id: string };
+        Returns: void;
+      };
+      leave_trip: {
+        Args: { p_trip_id: string };
+        Returns: void;
+      };
     };
     Enums: {
       trip_status: TripStatus;
@@ -233,6 +256,8 @@ export type Database = {
       date_availability: DateAvailability;
       travel_pace: TravelPace;
       spending_style: SpendingStyle;
+      togetherness: Togetherness;
+      stay_booking_mode: StayBookingMode;
     };
   };
 };

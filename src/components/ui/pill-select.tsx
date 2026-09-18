@@ -1,5 +1,7 @@
-import { Check } from "lucide-react";
-
+/* Single-select chip row. The design uses one chip shape everywhere:
+   44px tall, fully rounded, 1px border, weight 600 — selected is a solid
+   blue fill. Grid mode (5- or 3-step scales) drops to 12px/14px type with
+   4px horizontal padding so the longest Korean label still fits at 390px. */
 export function PillSelect<T extends string | number>({
   options,
   value,
@@ -19,7 +21,7 @@ export function PillSelect<T extends string | number>({
     <div
       role="radiogroup"
       aria-label={ariaLabel}
-      className={columns ? "grid gap-1.5" : "flex flex-wrap gap-2"}
+      className={columns ? (dense ? "grid gap-1" : "grid gap-1.5") : "flex flex-wrap gap-2"}
       style={columns ? { gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` } : undefined}
     >
       {options.map((opt) => {
@@ -31,15 +33,14 @@ export function PillSelect<T extends string | number>({
             role="radio"
             aria-checked={selected}
             onClick={() => onChange(opt.value)}
-            className={`inline-flex min-h-11 items-center justify-center gap-1 whitespace-nowrap rounded-full transition-colors ${
-              dense ? "px-1 text-xs" : "px-4 text-sm"
+            className={`inline-flex h-11 items-center justify-center whitespace-nowrap rounded-full border font-semibold transition-colors duration-[120ms] ${
+              columns ? (dense ? "px-1 text-xs" : "px-1 text-sm") : "px-4 text-sm"
             } ${
               selected
-                ? "border-2 border-primary bg-primary font-bold text-on-primary"
-                : "border border-hairline bg-surface font-medium text-ink-soft hover:bg-primary-soft"
+                ? "border-primary bg-primary text-on-primary"
+                : "border-hairline bg-surface text-ink-soft hover:bg-primary-soft"
             }`}
           >
-            {!dense && selected && <Check size={14} aria-hidden="true" />}
             {opt.label}
           </button>
         );

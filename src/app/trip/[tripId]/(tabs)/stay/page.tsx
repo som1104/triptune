@@ -20,6 +20,7 @@ export default async function StayPage({
   if (!ctx) return <TripNotFound />;
 
   const { trip, participants, me, isHost } = ctx;
+  const nights = Math.max(trip.trip_days - 1, 0);
 
   if (trip.status === "collecting_responses") {
     return (
@@ -35,7 +36,11 @@ export default async function StayPage({
   if (trip.status === "accommodation_collecting") {
     if (!me) return <TripNotFound />;
     const [{ data: accommodations }, { data: snapshot }] = await Promise.all([
-      supabase.from("accommodations").select("*").eq("trip_id", tripId).order("created_at", { ascending: true }),
+      supabase
+        .from("accommodations")
+        .select("*")
+        .eq("trip_id", tripId)
+        .order("created_at", { ascending: true }),
       supabase
         .from("consensus_snapshots")
         .select("*")
@@ -55,13 +60,22 @@ export default async function StayPage({
     const summary = snapshot?.preference_summary as
       | { items?: Record<string, { classification: string }>; pace?: { mode: string | null } }
       | undefined;
-    const prefLabel: Record<string, string> = { nature: "자연 중심", food: "맛집 중심", cafe: "카페 중심", activity: "활동 중심" };
+    const prefLabel: Record<string, string> = {
+      nature: "자연 중심",
+      food: "맛집 중심",
+      cafe: "카페 중심",
+      activity: "활동 중심",
+    };
     if (summary?.items) {
       for (const [key, item] of Object.entries(summary.items)) {
         if (item.classification === "favored" && prefLabel[key]) contextChips.push(prefLabel[key]);
       }
     }
-    const paceLabel: Record<string, string> = { relaxed: "여유로운 일정", balanced: "적당한 일정", packed: "알찬 일정" };
+    const paceLabel: Record<string, string> = {
+      relaxed: "여유로운 일정",
+      balanced: "적당한 일정",
+      packed: "알찬 일정",
+    };
     if (summary?.pace?.mode) contextChips.push(paceLabel[summary.pace.mode]);
 
     return (
@@ -72,6 +86,7 @@ export default async function StayPage({
         participants={participants}
         initialAccommodations={accommodations ?? []}
         confirmedParticipantCount={trip.confirmed_participant_count}
+        nights={nights}
         contextChips={contextChips}
       />
     );
@@ -95,7 +110,10 @@ export default async function StayPage({
     );
   }
 
-  const { data: votes } = await supabase.from("accommodation_votes").select("*").eq("trip_id", tripId);
+  const { data: votes } = await supabase
+    .from("accommodation_votes")
+    .select("*")
+    .eq("trip_id", tripId);
 
   if (trip.status === "vote_result") {
     return (

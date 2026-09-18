@@ -35,6 +35,8 @@ export default async function RespondPage({
         activity: prefRow.activity,
         pace: prefRow.pace,
         spending_style: prefRow.spending_style,
+        togetherness: prefRow.togetherness,
+        note: prefRow.note,
       }
     : null;
 

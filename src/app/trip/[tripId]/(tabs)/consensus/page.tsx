@@ -23,6 +23,13 @@ export default async function ConsensusPage({
   if (!ctx) return <TripNotFound />;
 
   const { trip, participants, isHost } = ctx;
+  const shared = {
+    tripId: trip.id,
+    isHost,
+    tripTitle: trip.title,
+    destination: trip.destination,
+    tripDays: trip.trip_days,
+  };
 
   if (trip.status === "collecting_responses") {
     const supabase = await createClient();
@@ -65,14 +72,28 @@ export default async function ConsensusPage({
     const preferenceResults = computePreferenceConsensus(preferenceInputs);
     const paceConsensus = computeStyleConsensus(preferenceInputs.map((r) => r.pace));
     const spendingConsensus = computeStyleConsensus(preferenceInputs.map((r) => r.spendingStyle));
+    // 함께 다니는 정도는 고른 사람만 센다 — 항목이 생기기 전 응답은 null 이다.
+    const togethernessConsensus = computeStyleConsensus(
+      (prefRows ?? [])
+        .map((r) => r.togetherness)
+        .filter((t): t is NonNullable<typeof t> => t != null)
+    );
+    // 자유 입력은 어떤 점수에도 들어가지 않는다. 쓴 사람 것만 그대로 나른다.
+    const nicknameByParticipant = new Map(participants.map((p) => [p.id, p.nickname]));
+    const notes = (prefRows ?? [])
+      .filter((r) => r.note && r.note.trim())
+      .map((r) => ({
+        participantId: r.participant_id,
+        nickname: nicknameByParticipant.get(r.participant_id) ?? "참여자",
+        note: r.note!.trim(),
+      }));
     const summary = buildGroupSummary(preferenceResults, paceConsensus);
 
     const pendingParticipants = participants.filter((p) => p.response_status !== "submitted");
 
     return (
       <ConsensusView
-        tripId={trip.id}
-        isHost={isHost}
+        {...shared}
         totalParticipants={participants.length}
         respondedCount={submitted.length}
         pendingNicknames={pendingParticipants.map((p) => p.nickname)}
@@ -80,6 +101,8 @@ export default async function ConsensusPage({
         preferenceResults={preferenceResults}
         paceConsensus={paceConsensus}
         spendingConsensus={spendingConsensus}
+        togethernessConsensus={togethernessConsensus}
+        notes={notes}
         summary={summary}
       />
     );
@@ -106,8 +129,7 @@ export default async function ConsensusPage({
 
   return (
     <ConsensusView
-      tripId={trip.id}
-      isHost={isHost}
+      {...shared}
       confirmedSnapshot={snapshot}
       canReopen={isHost && trip.status === "accommodation_collecting"}
     />

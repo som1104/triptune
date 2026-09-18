@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Hanken_Grotesk } from "next/font/google";
 import { SessionProvider } from "@/components/providers/session-provider";
 import { ToastProvider } from "@/components/ui/toast";
+import { AccountSheetProvider } from "@/components/auth/account-sheet";
+import { DevGuestSwitcher } from "@/components/dev/dev-guest-switcher";
 import "./globals.css";
 
 const hankenGrotesk = Hanken_Grotesk({
@@ -34,9 +36,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full">
         <SessionProvider>
           <ToastProvider>
-            <div className="mx-auto flex min-h-dvh w-full max-w-[480px] flex-col bg-surface">
-              {children}
-            </div>
+            <AccountSheetProvider>
+              <div className="flex min-h-dvh w-full flex-col bg-surface">
+                {children}
+              </div>
+              {/* 개발 서버에서만. next build 시 이 분기는 통째로 떨어져 나간다. */}
+              {process.env.NODE_ENV !== "production" && <DevGuestSwitcher />}
+            </AccountSheetProvider>
           </ToastProvider>
         </SessionProvider>
       </body>

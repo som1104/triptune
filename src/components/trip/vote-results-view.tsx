@@ -2,14 +2,20 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Clock, Info } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { TripAppBar } from "@/components/layout/trip-app-bar";
+import { Container } from "@/components/layout/container";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
+import { ConsensusBar } from "@/components/ui/consensus-bar";
+import { ScreenFooter } from "@/components/ui/screen-footer";
 import { useToast } from "@/components/ui/toast";
 import { StayImage } from "@/components/ui/stay-image";
 import { formatPrice, perPersonPrice } from "@/lib/trip/format";
+import { bookingLine } from "@/lib/trip/stay";
+import { RoomsDisclosure } from "@/components/trip/stay-room-details";
 import type { Accommodation, AccommodationVote } from "@/lib/supabase/database.types";
 
 export function VoteResultsView({
@@ -40,6 +46,18 @@ export function VoteResultsView({
   const isTie = topAccommodationIds.size > 1;
 
   const ranked = [...accommodations].sort((a, b) => (tally.get(b.id) ?? 0) - (tally.get(a.id) ?? 0));
+  const winner = ranked[0];
+  const remaining =
+    confirmedParticipantCount != null ? Math.max(confirmedParticipantCount - validVotes, 0) : 0;
+
+  const lead =
+    validVotes === 0
+      ? "아직 투표가 없어요."
+      : isTie
+        ? `${validVotes}명 모두 투표했지만 표가 같아요. 주최자가 최종 선택해요.`
+        : remaining > 0
+          ? `${validVotes}명이 투표했어요. 남은 투표가 있어 결과가 바뀔 수 있어요.`
+          : `${validVotes}명 모두 투표했어요. 가장 많은 표를 받은 숙소가 1순위예요.`;
 
   async function confirmFinal() {
     if (!confirmTarget) return;
@@ -63,79 +81,120 @@ export function VoteResultsView({
   return (
     <div className="flex flex-1 flex-col">
       <TripAppBar title="숙소 정하기" />
-      <div className="flex flex-1 flex-col gap-4 px-5 py-5">
+      <Container className="flex flex-1 flex-col gap-5 pb-6 pt-4 md:gap-6 md:pt-8 desk:pb-12">
         <div>
-          <h2 className="m-0 mb-2 text-2xl font-[650] leading-[1.2] text-ink">투표 결과</h2>
-          <p className="m-0 font-[300] text-[15px] leading-[1.43] text-text-muted">
-            {validVotes === 0 ? "아직 투표가 없어요." : `${validVotes}명이 투표했어요.`}
-          </p>
+          <h2 className="m-0 mb-2 text-2xl font-[650] leading-[1.2] text-ink desk:mb-1.5 desk:text-[28px]">
+            투표 결과
+          </h2>
+          <p className="m-0 text-[15px] font-[300] leading-[1.43] text-text-muted">{lead}</p>
         </div>
 
-        {isTie && validVotes > 0 && (
-          <div className="rounded-2xl bg-conflict-bg border border-conflict-border p-4">
-            <p className="text-sm text-conflict-text">
-              동일한 표를 받은 숙소가 있어요. 주최자의 최종 선택이 필요해요.
+        {/* Results read two abreast from md up — never more, so the bars stay
+            long enough to compare at a glance. */}
+        <div className="grid items-start gap-5 md:grid-cols-2 md:gap-6">
+        {ranked.map((a) => {
+          const count = tally.get(a.id) ?? 0;
+          const rate = validVotes === 0 ? 0 : Math.round((count / validVotes) * 100);
+          const isTop = topAccommodationIds.has(a.id);
+          const perPerson = confirmedParticipantCount
+            ? perPersonPrice(a.total_price, confirmedParticipantCount)
+            : null;
+          return (
+            <div
+              key={a.id}
+              className="overflow-hidden rounded-2xl border border-hairline-soft bg-surface"
+            >
+              <div className="relative h-[140px] w-full desk:h-[180px]">
+                <StayImage src={a.image_url} alt={a.name} />
+                {isTop && (
+                  <div className="pointer-events-none absolute left-3 top-3 flex gap-1.5">
+                    <Badge variant="primary">그룹 1순위</Badge>
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-col gap-2.5 p-4 desk:p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="m-0 mb-0.5 break-words text-base font-semibold text-ink">
+                      {a.name}
+                    </p>
+                    {/* 등록 당시의 예약안 그대로 — 투표가 시작되면 잠긴다. */}
+                    <p className="m-0 text-sm text-ink-soft">{bookingLine(a)}</p>
+                    <p className="m-0 text-sm text-ink-soft">
+                      {a.location}
+                      {perPerson != null && <> · 1인 약 {formatPrice(perPerson)}</>}
+                    </p>
+                  </div>
+                  <p className="m-0 whitespace-nowrap text-[18px] font-[650] text-ink">
+                    {count}표 · {rate}%
+                  </p>
+                </div>
+                <ConsensusBar percent={rate} tone={isTop ? "primary" : "faint"} />
+                <RoomsDisclosure accommodation={a} className="-ml-4" />
+                {/* With a tie the host has to pick between equals, so the choice
+                    moves onto the cards; otherwise it stays in the footer. */}
+                {isHost && isTie && isTop && (
+                  <Button variant="primary" fullWidth onClick={() => setConfirmTarget(a)}>
+                    이 숙소로 확정하기
+                  </Button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+        </div>
+
+        {!isTie && remaining > 0 && validVotes > 0 && (
+          <div className="flex min-h-[52px] items-center gap-2.5 rounded-2xl border border-hairline-soft px-4 py-3">
+            <span className="flex shrink-0 text-text-muted">
+              <Clock size={16} aria-hidden="true" />
+            </span>
+            <p className="m-0 text-sm leading-[1.4] text-ink-soft">
+              아직 {remaining}명이 투표하지 않았어요.
             </p>
           </div>
         )}
 
-        <div className="flex flex-col gap-3">
-          {ranked.map((a) => {
-            const count = tally.get(a.id) ?? 0;
-            const rate = validVotes === 0 ? 0 : Math.round((count / validVotes) * 100);
-            const isTop = topAccommodationIds.has(a.id);
-            const perPerson = confirmedParticipantCount
-              ? perPersonPrice(a.total_price, confirmedParticipantCount)
-              : null;
-            return (
-              <div key={a.id} className="overflow-hidden rounded-2xl border border-hairline-soft">
-                <div className="relative h-32 w-full">
-                  <StayImage src={a.image_url} alt={a.name} />
-                  {isTop && (
-                    <span className="absolute left-3 top-3">
-                      <Badge variant="primary">그룹 1순위</Badge>
-                    </span>
-                  )}
-                </div>
-                <div className="flex flex-col gap-2 p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="break-words text-[16px] font-semibold text-ink">{a.name}</p>
-                      <p className="text-sm text-text-muted">
-                        {a.location}
-                        {perPerson != null && <> · 1인 약 {formatPrice(perPerson)}</>}
-                      </p>
-                    </div>
-                    <p className="whitespace-nowrap text-lg font-bold text-ink">
-                      {count}표 · {rate}%
-                    </p>
-                  </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-hairline-soft">
-                    <div className="h-full rounded-full bg-primary" style={{ width: `${rate}%` }} />
-                  </div>
-                  {isHost && (
-                    <Button
-                      variant={isTop ? "primary" : "soft"}
-                      size="md"
-                      fullWidth
-                      disabled={!isTop || validVotes === 0}
-                      onClick={() => setConfirmTarget(a)}
-                    >
-                      이 숙소로 확정하기
-                    </Button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+        {isTie && validVotes > 0 && (
+          <div className="flex items-start gap-2.5 rounded-2xl border border-conflict-pill-border bg-conflict-pill-bg px-4 py-3">
+            <span className="mt-px flex shrink-0 text-conflict-text">
+              <Info size={16} aria-hidden="true" />
+            </span>
+            <p className="m-0 text-sm leading-[1.4] text-conflict-text">
+              동일한 표를 받은 숙소가 있어요. 주최자의 최종 선택이 필요해요.
+            </p>
+          </div>
+        )}
+      </Container>
+
+      <ScreenFooter>
+        {isHost ? (
+          !isTie && (
+            <Button
+              size="lg"
+              fullWidth
+              disabled={validVotes === 0 || !winner}
+              onClick={() => winner && setConfirmTarget(winner)}
+            >
+              이 숙소로 확정하기
+            </Button>
+          )
+        ) : (
+          <p className="m-0 flex min-h-11 items-center justify-center text-center text-sm text-text-muted">
+            주최자가 최종 숙소를 확정하고 있어요.
+          </p>
+        )}
+      </ScreenFooter>
 
       <Modal
         open={!!confirmTarget}
         onClose={() => setConfirmTarget(null)}
         title="이 숙소로 확정할까요?"
-        description={confirmTarget ? `"${confirmTarget.name}"으로 여행이 최종 확정돼요. 이후에는 되돌릴 수 없어요.` : undefined}
+        description={
+          confirmTarget
+            ? `"${confirmTarget.name}"으로 여행이 최종 확정돼요. 이후에는 되돌릴 수 없어요.`
+            : undefined
+        }
       >
         <div className="flex flex-col gap-2">
           <Button variant="outline" fullWidth onClick={() => setConfirmTarget(null)}>

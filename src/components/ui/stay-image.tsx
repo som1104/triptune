@@ -12,7 +12,7 @@ export function StayImage({
   className?: string;
 }) {
   const [failed, setFailed] = useState(false);
-  const finalSrc = !src || failed ? "/images/stay-fallback.svg" : src;
+  const finalSrc = !src || failed ? "/images/stay-fallback.jpg" : src;
 
   return (
     // eslint-disable-next-line @next/next/no-img-element

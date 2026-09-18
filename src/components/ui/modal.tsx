@@ -63,13 +63,15 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
-        className="flex w-full max-w-sm flex-col gap-5 rounded-3xl bg-surface p-6"
+        className="flex w-full max-w-[480px] flex-col gap-5 rounded-3xl bg-surface p-6"
       >
         <div>
-          <h2 id="modal-title" className="m-0 mb-2 text-xl font-[650] text-ink">
+          <h2 id="modal-title" className="m-0 mb-2 text-xl font-[650] leading-[1.25] text-ink">
             {title}
           </h2>
-          {description && <p className="m-0 text-sm leading-relaxed text-ink-soft">{description}</p>}
+          {description && (
+            <p className="m-0 text-sm leading-[1.45] text-ink-soft">{description}</p>
+          )}
         </div>
         {children}
       </div>

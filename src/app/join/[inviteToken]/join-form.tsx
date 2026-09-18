@@ -9,6 +9,7 @@ import { ensureAnonSession } from "@/lib/supabase/ensure-session";
 import { joinTripSchema, type JoinTripInput } from "@/lib/validation/trip";
 import { TextInput } from "@/components/ui/text-input";
 import { Button } from "@/components/ui/button";
+import { FooterNote, ScreenFooter } from "@/components/ui/screen-footer";
 import { useToast } from "@/components/ui/toast";
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -75,20 +76,23 @@ export function JoinForm({ inviteToken }: { inviteToken: string }) {
         error={errors.nickname?.message}
         {...register("nickname")}
       />
-      <div className="mt-auto flex flex-col gap-2 pt-4">
-        <Button
-          type="submit"
-          variant="primary"
-          size="lg"
-          fullWidth
-          loading={isSubmitting}
-          icon={<ArrowRight size={18} aria-hidden="true" />}
-        >
-          여행에 참여하기
-        </Button>
-        <p className="text-center text-xs text-text-muted">
-          참여하면 바로 내 날짜·취향 입력으로 이동해요.
-        </p>
+
+      {/* The footer is full-bleed: -mx-5 cancels the page's side padding so
+          the 1px rule runs edge to edge exactly as in the design. */}
+      <div className="-mx-5 mt-auto">
+        <ScreenFooter>
+          <Button
+            type="submit"
+            variant="primary"
+            size="lg"
+            fullWidth
+            loading={isSubmitting}
+            icon={<ArrowRight size={16} aria-hidden="true" />}
+          >
+            여행에 참여하기
+          </Button>
+          <FooterNote>참여하면 바로 내 날짜·취향 입력으로 이동해요.</FooterNote>
+        </ScreenFooter>
       </div>
     </form>
   );

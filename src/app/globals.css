@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* Design tokens — mirrors the Mobbin design system bound to this project
+   (_ds/mobbin-design-system.../tokens/*.css) with the TRIPTUNE overrides
+   declared in the flow board's <helmet> block. Hex values are taken
+   verbatim from the design source; do not "round" them. */
 :root {
   --background: #f4f8fe;
   --surface: #ffffff;
@@ -10,22 +14,46 @@
   --hairline: #dfe3f2;
   --hairline-soft: #e6e9f5;
   --field: #eef1ff;
+  --focus-ring: #141414;
+  --scrim: rgba(115, 115, 115, 0.56);
 
   --primary: #5b7cfa;
   --primary-soft: #eef1ff;
   --on-primary: #ffffff;
+  /* label tone used on top of the solid blue card */
+  --on-primary-faint: #dfe6ff;
 
+  /* Coral carries exactly one meaning: people disagree.
+     Pills use the saturated border; cards use the softer tint. */
   --conflict: #f6a56d;
   --conflict-bg: #fffaf6;
   --conflict-border: #fbd3b3;
+  --conflict-pill-bg: #fff3ea;
+  --conflict-pill-border: #f6a56d;
   --conflict-text: #b3511a;
 
+  /* One per seat: a trip holds at most 10 people, so the palette has 10
+     entries and nobody has to share. Ordered so neighbours in a list never
+     land on adjacent hues. 1–4 are the original design system colours. */
   --avatar-1: #5b7cfa;
   --avatar-2: #f6a56d;
   --avatar-3: #4fa3f7;
   --avatar-4: #a78bfa;
+  --avatar-5: #3fb984;
+  --avatar-6: #ef7c8e;
+  --avatar-7: #35c1cd;
+  --avatar-8: #d08ae0;
+  --avatar-9: #e0a32e;
+  --avatar-10: #8a9bb8;
 
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* The spec's three bands: mobile ≤767 (Tailwind default), tablet 768+ (md),
+   desktop 1200+ (desk). Tailwind has no 1200 stop, so it is declared here —
+   `desk:` is where the bottom tab bar gives way to the top nav. */
+@theme {
+  --breakpoint-desk: 1200px;
 }
 
 @theme inline {
@@ -38,27 +66,47 @@
   --color-hairline: var(--hairline);
   --color-hairline-soft: var(--hairline-soft);
   --color-field: var(--field);
+  --color-scrim: var(--scrim);
   --color-primary: var(--primary);
   --color-primary-soft: var(--primary-soft);
   --color-on-primary: var(--on-primary);
+  --color-on-primary-faint: var(--on-primary-faint);
   --color-conflict: var(--conflict);
   --color-conflict-bg: var(--conflict-bg);
   --color-conflict-border: var(--conflict-border);
+  --color-conflict-pill-bg: var(--conflict-pill-bg);
+  --color-conflict-pill-border: var(--conflict-pill-border);
   --color-conflict-text: var(--conflict-text);
   --font-sans: var(--font-core);
 }
 
-* {
-  -webkit-tap-highlight-color: transparent;
-}
+/* Element defaults live in @layer base on purpose. Tailwind v4 puts its
+   utilities in a cascade layer, and ANY unlayered rule beats a layered one
+   regardless of specificity — an unlayered `a { color: inherit }` would
+   silently override `text-on-primary` on every link-styled button. */
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
 
-body {
-  background: var(--background);
-  color: var(--ink);
-  font-family: var(--font-core);
-  font-weight: 450;
-  letter-spacing: 0;
-  -webkit-font-smoothing: antialiased;
+  body {
+    background: var(--background);
+    color: var(--ink);
+    font-family: var(--font-core);
+    font-weight: 450;
+    letter-spacing: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button {
+    font-family: inherit;
+    letter-spacing: 0;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
 }
 
 :root {
@@ -72,12 +120,3 @@ body {
     "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
 }
 
-button {
-  font-family: inherit;
-  letter-spacing: 0;
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-}

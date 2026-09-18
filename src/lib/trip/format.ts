@@ -20,6 +20,22 @@ export function formatTripLength(tripDays: number): string {
   return `${nights}박 ${tripDays}일`;
 }
 
+/** "10월 17일–19일" — the compact range used on the 내 여행 cards. */
+export function formatDateRangeKo(startIso: string, endIso: string): string {
+  const s = new Date(startIso + "T00:00:00");
+  const e = new Date(endIso + "T00:00:00");
+  const head = `${s.getMonth() + 1}월 ${s.getDate()}일`;
+  return s.getMonth() === e.getMonth()
+    ? `${head}–${e.getDate()}일`
+    : `${head}–${e.getMonth() + 1}월 ${e.getDate()}일`;
+}
+
+/** "10월 중" — for trips whose dates the group has not settled yet. */
+export function formatMonthHintKo(iso: string): string {
+  const d = new Date(iso + "T00:00:00");
+  return `${d.getMonth() + 1}월 중`;
+}
+
 export function formatPrice(won: number): string {
   return `${won.toLocaleString("ko-KR")}원`;
 }

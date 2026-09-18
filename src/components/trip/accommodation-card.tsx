@@ -1,23 +1,30 @@
 "use client";
 
 import { useId, useState } from "react";
-import { ExternalLink, MoreVertical, Pencil, Trash2, TriangleAlert } from "lucide-react";
+import { ExternalLink, MoreHorizontal, Pencil, Trash2, TriangleAlert } from "lucide-react";
 import { StayImage } from "@/components/ui/stay-image";
-import { Badge } from "@/components/ui/badge";
+import { Avatar } from "@/components/ui/avatar";
+import { LinkButton } from "@/components/ui/button";
 import { formatPrice, perPersonPrice } from "@/lib/trip/format";
+import { bookingLine, parseRooms, roomsSummaryLine } from "@/lib/trip/stay";
+import { RoomsDisclosure } from "@/components/trip/stay-room-details";
 import type { Accommodation } from "@/lib/supabase/database.types";
 
 export function AccommodationCard({
   accommodation,
+  creatorId,
   creatorNickname,
   confirmedParticipantCount,
+  nights,
   canManage,
   onEdit,
   onDelete,
 }: {
   accommodation: Accommodation;
+  creatorId: string;
   creatorNickname: string;
   confirmedParticipantCount: number | null;
+  nights: number;
   canManage: boolean;
   onEdit: () => void;
   onDelete: () => void;
@@ -27,18 +34,23 @@ export function AccommodationCard({
   const perPerson = confirmedParticipantCount
     ? perPersonPrice(accommodation.total_price, confirmedParticipantCount)
     : null;
-  const underCapacity = confirmedParticipantCount != null && accommodation.capacity < confirmedParticipantCount;
+  const underCapacity =
+    confirmedParticipantCount != null && accommodation.capacity < confirmedParticipantCount;
+  const isRooms = accommodation.booking_mode === "rooms";
+  const roomsLine = isRooms ? roomsSummaryLine(parseRooms(accommodation.rooms)) : "";
 
   return (
     <div className="overflow-hidden rounded-2xl border border-hairline-soft bg-surface">
-      <div className="h-36 w-full">
+      <div className="h-40 w-full desk:h-[200px]">
         <StayImage src={accommodation.image_url} alt={accommodation.name} />
       </div>
-      <div className="flex flex-col gap-2 p-4">
-        <div className="flex items-start justify-between gap-2">
-          <p className="min-w-0 flex-1 break-words text-[16px] font-semibold text-ink">{accommodation.name}</p>
+      <div className="flex flex-col gap-3 p-4 desk:p-5">
+        <div className="flex items-start justify-between gap-3">
+          <p className="m-0 min-w-0 flex-1 break-words text-[18px] font-[650] text-ink">
+            {accommodation.name}
+          </p>
           {canManage && (
-            <div className="relative shrink-0">
+            <div className="relative -mr-2.5 -mt-2.5 shrink-0">
               <button
                 type="button"
                 aria-label="숙소 후보 메뉴"
@@ -46,9 +58,9 @@ export function AccommodationCard({
                 aria-expanded={menuOpen}
                 aria-controls={menuId}
                 onClick={() => setMenuOpen((v) => !v)}
-                className="flex h-11 w-11 items-center justify-center rounded-full text-ink-soft hover:bg-primary-soft"
+                className="flex h-11 w-11 items-center justify-center rounded-full text-text-muted hover:bg-primary-soft"
               >
-                <MoreVertical size={18} aria-hidden="true" />
+                <MoreHorizontal size={18} aria-hidden="true" />
               </button>
               {menuOpen && (
                 <div
@@ -84,30 +96,48 @@ export function AccommodationCard({
           )}
         </div>
 
-        <p className="text-sm text-ink-soft">
-          총 {formatPrice(accommodation.total_price)}
-          {perPerson != null && <> · 1인 약 {formatPrice(perPerson)}</>}
-        </p>
-        <p className="text-sm text-text-muted">
-          {accommodation.location} · 최대 {accommodation.capacity}명
-        </p>
+        {/* 예약안이 한눈에 읽히도록 이용 방식 → 금액 → 위치 순으로. */}
+        <div>
+          {roomsLine && <p className="m-0 text-sm text-ink-soft">{roomsLine}</p>}
+          <p className="m-0 text-sm font-semibold text-ink">{bookingLine(accommodation)}</p>
+        </div>
+
+        <div>
+          <p className="m-0 text-[18px] font-[650] text-ink">
+            총 {formatPrice(accommodation.total_price)}
+            {perPerson != null && <> · 1인 약 {formatPrice(perPerson)}</>}
+          </p>
+          <p className="m-0 mt-0.5 text-sm text-ink-soft">
+            {nights}박
+            {confirmedParticipantCount != null && <> · 확정 인원 {confirmedParticipantCount}명 기준</>}
+          </p>
+        </div>
+
+        <p className="m-0 text-sm text-ink-soft">{accommodation.location}</p>
+
+        <RoomsDisclosure accommodation={accommodation} className="-ml-4" />
+
         {underCapacity && (
-          <p className="flex items-center gap-1.5 text-xs font-medium text-conflict-text">
+          <p className="m-0 flex items-center gap-1.5 text-xs font-medium text-conflict-text">
             <TriangleAlert size={13} aria-hidden="true" /> 현재 참여 인원보다 수용 가능 인원이 적어요.
           </p>
         )}
-        {accommodation.note && <p className="text-sm text-ink-soft">{accommodation.note}</p>}
+        {accommodation.note && <p className="m-0 text-sm text-ink-soft">{accommodation.note}</p>}
 
-        <div className="mt-1 flex items-center justify-between gap-2">
-          <Badge variant="muted">{creatorNickname} 등록</Badge>
-          <a
+        <div className="flex items-center justify-between gap-3">
+          <span className="inline-flex items-center gap-2 text-[13px] text-text-muted">
+            <Avatar nickname={creatorNickname} seed={creatorId} size="xs" />
+            {creatorNickname}님이 추가
+          </span>
+          <LinkButton
             href={accommodation.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-hairline px-3 text-sm font-semibold text-ink-soft hover:bg-primary-soft"
+            external
+            variant="outline"
+            className="shrink-0"
+            icon={<ExternalLink size={16} aria-hidden="true" />}
           >
-            숙소 페이지 <ExternalLink size={14} aria-hidden="true" />
-          </a>
+            숙소 페이지
+          </LinkButton>
         </div>
       </div>
     </div>
