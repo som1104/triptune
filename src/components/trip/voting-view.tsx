@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check } from "lucide-react";
+import { Check, RotateCcw } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { TripAppBar } from "@/components/layout/trip-app-bar";
 import { Container } from "@/components/layout/container";
@@ -41,6 +41,9 @@ export function VotingView({
   const [submitting, setSubmitting] = useState(false);
   const [showEndVoting, setShowEndVoting] = useState(false);
   const [endingVote, setEndingVote] = useState(false);
+  // 너무 일찍 투표를 시작했을 때 후보 단계로 물러설 길.
+  const [showReopenCandidates, setShowReopenCandidates] = useState(false);
+  const [reopening, setReopening] = useState(false);
 
   async function refreshProgress() {
     const supabase = createClient();
@@ -97,6 +100,21 @@ export function VotingView({
       showToast(err instanceof Error ? err.message : "투표를 종료하지 못했어요.", "error");
     } finally {
       setEndingVote(false);
+    }
+  }
+
+  async function reopenCandidates() {
+    setReopening(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.rpc("reopen_stay_candidates", { p_trip_id: tripId });
+      if (error) throw new Error(error.message);
+      setShowReopenCandidates(false);
+      router.refresh();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "되돌리지 못했어요.", "error");
+    } finally {
+      setReopening(false);
     }
   }
 
@@ -295,9 +313,14 @@ export function VotingView({
             누가 무엇을 골랐는지는 결과 공개 후에 보여요.
           </p>
           {isHost && (
-            <Button variant="outline" fullWidth onClick={() => setShowEndVoting(true)}>
-              지금 투표 마감
-            </Button>
+            <div className="flex flex-col gap-2">
+              <Button variant="outline" fullWidth onClick={() => setShowEndVoting(true)}>
+                지금 투표 마감
+              </Button>
+              <Button variant="ghost" fullWidth onClick={() => setShowReopenCandidates(true)}>
+                후보 다시 모으기
+              </Button>
+            </div>
           )}
         </aside>
       </Container>
@@ -321,11 +344,38 @@ export function VotingView({
           </Button>
         )}
         {isHost && (
-          <Button variant="ghost" fullWidth onClick={() => setShowEndVoting(true)}>
-            투표 종료하기
-          </Button>
+          <>
+            <Button variant="ghost" fullWidth onClick={() => setShowEndVoting(true)}>
+              투표 종료하기
+            </Button>
+            <Button
+              variant="ghost"
+              fullWidth
+              icon={<RotateCcw size={16} aria-hidden="true" />}
+              iconPosition="start"
+              onClick={() => setShowReopenCandidates(true)}
+            >
+              후보 다시 모으기
+            </Button>
+          </>
         )}
       </ScreenFooter>
+
+      <Modal
+        open={showReopenCandidates}
+        onClose={() => setShowReopenCandidates(false)}
+        title="후보를 다시 모을까요?"
+        description="숙소 후보를 추가하거나 고칠 수 있게 되고, 지금까지의 표는 모두 지워져요."
+      >
+        <div className="flex flex-col gap-2">
+          <Button variant="outline" fullWidth onClick={() => setShowReopenCandidates(false)}>
+            취소
+          </Button>
+          <Button fullWidth loading={reopening} onClick={reopenCandidates}>
+            후보 다시 모으기
+          </Button>
+        </div>
+      </Modal>
 
       <Modal
         open={showEndVoting}

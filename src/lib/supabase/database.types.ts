@@ -244,6 +244,14 @@ export type Database = {
         Args: { p_trip_id: string };
         Returns: void;
       };
+      reopen_voting: {
+        Args: { p_trip_id: string };
+        Returns: void;
+      };
+      reopen_stay_candidates: {
+        Args: { p_trip_id: string };
+        Returns: void;
+      };
       leave_trip: {
         Args: { p_trip_id: string };
         Returns: void;

@@ -19,7 +19,18 @@ const ERROR_MESSAGES: Record<string, string> = {
   ACCOMMODATION_LIMIT_TOTAL: "숙소 후보는 최대 5개까지 등록할 수 있어요.",
   ACCOMMODATION_LIMIT_PER_PARTICIPANT: "1인당 최대 2개까지 등록할 수 있어요.",
   accommodations_rooms_shape: "객실 구성을 다시 확인해주세요.",
+  // 마이그레이션을 아직 돌리지 않았을 때 PostgREST 가 내는 말 — 원인이
+  // 화면에 드러나지 않으면 "저장하지 못했어요"만 보고 한참 헤매게 된다.
+  booking_mode: "숙소 테이블에 예약안 컬럼이 아직 없어요. 0006 마이그레이션을 실행해 주세요.",
+  "schema cache": "숙소 테이블 구조가 최신이 아니에요. 최신 마이그레이션을 실행해 주세요.",
 };
+
+/* 아는 오류는 우리 문구로, 모르는 오류는 원문 그대로. 원인을 삼키지 않는다. */
+function messageFor(error: { message: string }): string {
+  const key = Object.keys(ERROR_MESSAGES).find((k) => error.message.includes(k));
+  if (key) return ERROR_MESSAGES[key];
+  return error.message ? `저장하지 못했어요. (${error.message})` : "저장하지 못했어요.";
+}
 
 const MODE_OPTIONS: { value: StayBookingMode; label: string }[] = [
   { value: "whole", label: "숙소 전체 사용" },
@@ -199,8 +210,8 @@ export function AddAccommodationSheet({
             .single();
 
       if (error) {
-        const code = Object.keys(ERROR_MESSAGES).find((k) => error.message.includes(k));
-        throw new Error(code ? ERROR_MESSAGES[code] : "저장하지 못했어요.");
+        console.error("[accommodation save]", error);
+        throw new Error(messageFor(error));
       }
 
       showToast(editing ? "숙소 정보를 수정했어요." : "숙소 후보를 등록했어요.");

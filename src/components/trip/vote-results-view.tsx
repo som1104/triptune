@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Clock, Info } from "lucide-react";
+import { Clock, Info, RotateCcw, Undo2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { TripAppBar } from "@/components/layout/trip-app-bar";
 import { Container } from "@/components/layout/container";
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
 import { ConsensusBar } from "@/components/ui/consensus-bar";
-import { ScreenFooter } from "@/components/ui/screen-footer";
+import { FooterNote, ScreenFooter } from "@/components/ui/screen-footer";
 import { useToast } from "@/components/ui/toast";
 import { StayImage } from "@/components/ui/stay-image";
 import { formatPrice, perPersonPrice } from "@/lib/trip/format";
@@ -35,6 +35,9 @@ export function VoteResultsView({
   const { showToast } = useToast();
   const [confirmTarget, setConfirmTarget] = useState<Accommodation | null>(null);
   const [confirming, setConfirming] = useState(false);
+  // 되돌리기 — 표가 하나도 없거나 후보를 고쳐야 할 때의 유일한 출구다.
+  const [reopenTarget, setReopenTarget] = useState<"voting" | "candidates" | null>(null);
+  const [reopening, setReopening] = useState(false);
 
   const validVotes = votes.length;
   const tally = new Map<string, number>();
@@ -58,6 +61,25 @@ export function VoteResultsView({
         : remaining > 0
           ? `${validVotes}명이 투표했어요. 남은 투표가 있어 결과가 바뀔 수 있어요.`
           : `${validVotes}명 모두 투표했어요. 가장 많은 표를 받은 숙소가 1순위예요.`;
+
+  async function reopen() {
+    if (!reopenTarget) return;
+    setReopening(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.rpc(
+        reopenTarget === "voting" ? "reopen_voting" : "reopen_stay_candidates",
+        { p_trip_id: tripId }
+      );
+      if (error) throw new Error(error.message);
+      setReopenTarget(null);
+      router.refresh();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "되돌리지 못했어요.", "error");
+    } finally {
+      setReopening(false);
+    }
+  }
 
   async function confirmFinal() {
     if (!confirmTarget) return;
@@ -169,22 +191,71 @@ export function VoteResultsView({
 
       <ScreenFooter>
         {isHost ? (
-          !isTie && (
-            <Button
-              size="lg"
-              fullWidth
-              disabled={validVotes === 0 || !winner}
-              onClick={() => winner && setConfirmTarget(winner)}
-            >
-              이 숙소로 확정하기
-            </Button>
-          )
+          <>
+            {!isTie && (
+              <Button
+                size="lg"
+                fullWidth
+                disabled={validVotes === 0 || !winner}
+                onClick={() => winner && setConfirmTarget(winner)}
+              >
+                이 숙소로 확정하기
+              </Button>
+            )}
+            <div className="flex gap-2 desk:gap-2">
+              <Button
+                variant="outline"
+                className="min-w-0 flex-1 desk:flex-none"
+                icon={<Undo2 size={16} aria-hidden="true" />}
+                iconPosition="start"
+                onClick={() => setReopenTarget("voting")}
+              >
+                투표 다시 열기
+              </Button>
+              <Button
+                variant="outline"
+                className="min-w-0 flex-1 desk:flex-none"
+                icon={<RotateCcw size={16} aria-hidden="true" />}
+                iconPosition="start"
+                onClick={() => setReopenTarget("candidates")}
+              >
+                후보 다시 모으기
+              </Button>
+            </div>
+            {validVotes === 0 && (
+              <FooterNote>
+                아직 아무도 투표하지 않았어요. 투표를 다시 열거나 후보부터 다시 모을 수 있어요.
+              </FooterNote>
+            )}
+          </>
         ) : (
           <p className="m-0 flex min-h-11 items-center justify-center text-center text-sm text-text-muted">
             주최자가 최종 숙소를 확정하고 있어요.
           </p>
         )}
       </ScreenFooter>
+
+      <Modal
+        open={reopenTarget !== null}
+        onClose={() => setReopenTarget(null)}
+        title={
+          reopenTarget === "voting" ? "투표를 다시 열까요?" : "후보를 다시 모을까요?"
+        }
+        description={
+          reopenTarget === "voting"
+            ? "지금까지의 표는 그대로 두고 다시 투표할 수 있게 돼요."
+            : "숙소 후보를 추가하거나 고칠 수 있게 되고, 지금까지의 표는 모두 지워져요."
+        }
+      >
+        <div className="flex flex-col gap-2">
+          <Button variant="outline" fullWidth onClick={() => setReopenTarget(null)}>
+            취소
+          </Button>
+          <Button fullWidth loading={reopening} onClick={reopen}>
+            {reopenTarget === "voting" ? "투표 다시 열기" : "후보 다시 모으기"}
+          </Button>
+        </div>
+      </Modal>
 
       <Modal
         open={!!confirmTarget}
