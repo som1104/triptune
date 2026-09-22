@@ -20,6 +20,9 @@ export type Togetherness = "mostly_together" | "core_together" | "free_time";
 /** 숙소를 통째로 빌리는지, 객실을 여러 개 잡는지 */
 export type StayBookingMode = "whole" | "rooms";
 
+/** 확정 뒤 어디까지 되돌렸는지 */
+export type ReopenScope = "stay_vote" | "group_direction";
+
 // NOTE: these row shapes must be `type` aliases, not `interface`s.
 // Interfaces don't get TypeScript's implicit index-signature compatibility,
 // so they silently fail the `extends Record<string, unknown>` check that
@@ -41,6 +44,12 @@ export type Trip = {
   final_accommodation_id: string | null;
   invite_token: string;
   status: TripStatus;
+  /* 지금 열려 있는 재조율 한 건. 다시 확정되면 모두 null 로 돌아간다.
+     상태값을 새로 만드는 대신 이 필드로 '처음 진행'과 '재조율'을 구분한다. */
+  reopened_scope: ReopenScope | null;
+  reopened_reason: string | null;
+  reopened_at: string | null;
+  reopened_by_participant_id: string | null;
   created_at: string;
   updated_at: string;
   confirmed_at: string | null;
@@ -113,6 +122,16 @@ export type Accommodation = {
   updated_at: string;
 };
 
+/** 지우지 않는 재개 기록 — 누가·언제·어디까지·왜 */
+export type TripReopening = {
+  id: string;
+  trip_id: string;
+  reopened_by_participant_id: string | null;
+  scope: ReopenScope;
+  reason: string | null;
+  created_at: string;
+};
+
 export type AccommodationVote = {
   id: string;
   trip_id: string;
@@ -159,6 +178,7 @@ export type Database = {
       consensus_snapshots: TableDef<ConsensusSnapshot>;
       accommodations: TableDef<Accommodation>;
       accommodation_votes: TableDef<AccommodationVote>;
+      trip_reopenings: TableDef<TripReopening>;
     };
     Views: Record<string, never>;
     Functions: {
@@ -240,6 +260,10 @@ export type Database = {
         Args: { p_trip_id: string; p_accommodation_id: string };
         Returns: void;
       };
+      reopen_after_confirm: {
+        Args: { p_trip_id: string; p_scope: ReopenScope; p_reason: string | null };
+        Returns: void;
+      };
       delete_trip: {
         Args: { p_trip_id: string };
         Returns: void;
@@ -266,6 +290,7 @@ export type Database = {
       spending_style: SpendingStyle;
       togetherness: Togetherness;
       stay_booking_mode: StayBookingMode;
+      reopen_scope: ReopenScope;
     };
   };
 };

@@ -11,6 +11,7 @@ import { FactRow } from "@/components/ui/summary-row";
 import { FooterNote, ScreenFooter } from "@/components/ui/screen-footer";
 import { StayImage } from "@/components/ui/stay-image";
 import { SaveTripCard } from "@/components/auth/guest-notice-modal";
+import { ReopenTripSheet } from "@/components/trip/reopen-trip-sheet";
 import { BOOKING_MODE_LABEL, parseRooms, roomTotals } from "@/lib/trip/stay";
 import { useToast } from "@/components/ui/toast";
 import {
@@ -27,11 +28,13 @@ export function FinalTripView({
   finalAccommodation,
   participants,
   summarySentence,
+  isHost,
 }: {
   trip: Trip;
   finalAccommodation: Accommodation | null;
   participants: Participant[];
   summarySentence: string | null;
+  isHost: boolean;
 }) {
   const { showToast } = useToast();
   const perPerson =
@@ -234,6 +237,20 @@ export function FinalTripView({
         <div className="md:col-start-2 md:row-start-3">
           <SaveTripCard tripId={trip.id} />
         </div>
+
+        {/* 주최자용 보조 관리. 주요 CTA(공유·새 여행)와 섞이지 않게 목록 끝에
+            조용히 둔다. */}
+        {isHost && (
+          <div className="flex flex-col gap-1.5 md:col-start-2 md:row-start-4">
+            <div className="h-px bg-hairline-soft" aria-hidden="true" />
+            <div className="flex items-center justify-between gap-3">
+              <p className="m-0 text-[13px] text-text-muted">
+                일정이나 인원이 바뀌었나요?
+              </p>
+              <ReopenTripSheet tripId={trip.id} />
+            </div>
+          </div>
+        )}
         </div>
       </Container>
 

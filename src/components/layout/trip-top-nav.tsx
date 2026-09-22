@@ -42,6 +42,8 @@ export function TripTopNav({ tripId }: { tripId?: string }) {
                     key={l.href}
                     href={l.href}
                     aria-current={active ? "page" : undefined}
+                    // 보고 있는 탭을 다시 누르면 같은 화면을 새로 받아온다.
+                    onClick={active ? (e) => e.preventDefault() : undefined}
                     className={`flex h-11 items-center rounded-full px-4 text-sm font-semibold ${
                       active ? "bg-primary-soft text-ink" : "text-text-muted hover:bg-primary-soft"
                     }`}

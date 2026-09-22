@@ -14,7 +14,7 @@ import { FooterNote, ScreenFooter } from "@/components/ui/screen-footer";
 import { useToast } from "@/components/ui/toast";
 import { StayImage } from "@/components/ui/stay-image";
 import { formatPrice, perPersonPrice } from "@/lib/trip/format";
-import { bookingLine } from "@/lib/trip/stay";
+import { bookingLine, tallyVotes, votePercentage } from "@/lib/trip/stay";
 import { RoomsDisclosure } from "@/components/trip/stay-room-details";
 import type { Accommodation, AccommodationVote } from "@/lib/supabase/database.types";
 
@@ -39,19 +39,15 @@ export function VoteResultsView({
   const [reopenTarget, setReopenTarget] = useState<"voting" | "candidates" | null>(null);
   const [reopening, setReopening] = useState(false);
 
-  const validVotes = votes.length;
-  const tally = new Map<string, number>();
-  for (const v of votes) tally.set(v.accommodation_id, (tally.get(v.accommodation_id) ?? 0) + 1);
-  const topCount = validVotes === 0 ? 0 : Math.max(0, ...accommodations.map((a) => tally.get(a.id) ?? 0));
-  const topAccommodationIds = new Set(
-    accommodations.filter((a) => topCount > 0 && (tally.get(a.id) ?? 0) === topCount).map((a) => a.id)
-  );
-  const isTie = topAccommodationIds.size > 1;
-
-  const ranked = [...accommodations].sort((a, b) => (tally.get(b.id) ?? 0) - (tally.get(a.id) ?? 0));
+  const {
+    validVotes,
+    counts: tally,
+    ranked,
+    topIds: topAccommodationIds,
+    isTie,
+    remainingVoters: remaining,
+  } = tallyVotes(accommodations, votes, confirmedParticipantCount);
   const winner = ranked[0];
-  const remaining =
-    confirmedParticipantCount != null ? Math.max(confirmedParticipantCount - validVotes, 0) : 0;
 
   const lead =
     validVotes === 0
@@ -116,7 +112,7 @@ export function VoteResultsView({
         <div className="grid items-start gap-5 md:grid-cols-2 md:gap-6">
         {ranked.map((a) => {
           const count = tally.get(a.id) ?? 0;
-          const rate = validVotes === 0 ? 0 : Math.round((count / validVotes) * 100);
+          const rate = votePercentage(count, validVotes);
           const isTop = topAccommodationIds.has(a.id);
           const perPerson = confirmedParticipantCount
             ? perPersonPrice(a.total_price, confirmedParticipantCount)

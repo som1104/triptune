@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -14,6 +14,7 @@ import { PillSelect } from "@/components/ui/pill-select";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { getMonthGrid } from "@/lib/trip/calendar";
+import { countDateStates } from "@/lib/trip/consensus";
 import { formatShortDateKo, formatTripLength } from "@/lib/trip/format";
 import type {
   DateAvailability,
@@ -139,6 +140,7 @@ export function RespondForm({
 }) {
   const router = useRouter();
   const { showToast } = useToast();
+  const [pendingNav, startTransition] = useTransition();
 
   const allDates = useMemo(
     () => datesInRange(candidateStartDate, candidateEndDate),
@@ -176,6 +178,8 @@ export function RespondForm({
   const [dirty, setDirty] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  // 저장 성공 후 합의 화면으로 넘어가는 동안 버튼을 되살리지 않는다.
+  const [leaving, setLeaving] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showNoAvailableConfirm, setShowNoAvailableConfirm] = useState(false);
@@ -230,11 +234,7 @@ export function RespondForm({
   }
 
   // 요약은 보고 있는 달이 아니라 후보 기간 전체를 센다.
-  const counts = useMemo(() => {
-    const c = { available: 0, tentative: 0, unavailable: 0 };
-    for (const iso of allDates) c[dates[iso] ?? "tentative"]++;
-    return c;
-  }, [allDates, dates]);
+  const counts = useMemo(() => countDateStates(allDates, dates), [allDates, dates]);
 
   const interestsDone =
     nature !== undefined && food !== undefined && cafe !== undefined && activity !== undefined;
@@ -270,16 +270,37 @@ export function RespondForm({
       // Do not also fire a toast — the toast rail sits 88px off the bottom,
       // which lands right on top of that pill.
       setSaved(true);
+      setShowNoAvailableConfirm(false);
+
+      /* 저장이 확인된 뒤에만 넘어간다. 저장됨 표시를 잠깐 보여준 다음
+         그룹 합의로 이동하는데, 그 사이 버튼은 계속 잠겨 있어야 한다. */
+      setLeaving(true);
+      window.setTimeout(() => {
+        startTransition(() => {
+          // 합의 화면이 라우터 캐시에 남아 있으면 방금 낸 응답이 빠진 채로
+          // 그려진다. 먼저 캐시를 버리고 같은 전환 안에서 이동한다.
+          router.refresh();
+          router.push(`/trip/${tripId}/consensus`);
+        });
+      }, 700);
+      return;
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "저장하지 못했어요.", "error");
+      // 실패하면 화면에 그대로 머문다 — 입력값은 상태에 살아 있고, dirty 도
+      // 그대로라 바로 다시 저장할 수 있다.
+      showToast(
+        err instanceof Error
+          ? `저장하지 못했어요. ${err.message}`
+          : "저장하지 못했어요. 잠시 후 다시 시도해 주세요.",
+        "error"
+      );
+      setShowNoAvailableConfirm(false);
     } finally {
       setSaving(false);
-      setShowNoAvailableConfirm(false);
     }
   }
 
   function handleSave() {
-    if (saving) return;
+    if (saving || leaving) return;
     if (!interestsDone) {
       setStyleError("여행 관심사를 모두 선택해 주세요.");
       interestsRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -310,9 +331,11 @@ export function RespondForm({
 
   const saveHint = !canSave
     ? "관심사와 여행 스타일을 모두 고르면 저장할 수 있어요."
-    : dirty
-      ? "저장하면 그룹 합의에 바로 반영돼요."
-      : "변경한 내용이 없어요.";
+    : leaving
+      ? "그룹 합의 화면으로 이동할게요."
+      : dirty
+        ? "저장하면 그룹 합의 화면으로 넘어가요."
+        : "변경한 내용이 없어요.";
 
   function renderMonth(cursor: Date, compact: boolean) {
     const grid = getMonthGrid(
@@ -676,7 +699,11 @@ export function RespondForm({
                 </span>
               )}
               <p className="m-0 text-[13px] text-text-muted">{saveHint}</p>
-              <Button disabled={!dirty} loading={saving} onClick={handleSave}>
+              <Button
+                disabled={!dirty || leaving}
+                loading={saving || leaving || pendingNav}
+                onClick={handleSave}
+              >
                 응답 저장
               </Button>
             </div>
@@ -694,7 +721,13 @@ export function RespondForm({
             응답이 저장되었어요.
           </span>
         )}
-        <Button size="lg" fullWidth disabled={!dirty} loading={saving} onClick={handleSave}>
+        <Button
+          size="lg"
+          fullWidth
+          disabled={!dirty || leaving}
+          loading={saving || leaving || pendingNav}
+          onClick={handleSave}
+        >
           응답 저장
         </Button>
         <p className="m-0 text-center text-[13px] text-text-muted">{saveHint}</p>
@@ -726,7 +759,7 @@ export function RespondForm({
           <Button variant="outline" fullWidth onClick={() => setShowNoAvailableConfirm(false)}>
             계속 선택
           </Button>
-          <Button fullWidth loading={saving} onClick={save}>
+          <Button fullWidth loading={saving || leaving} onClick={save}>
             그대로 저장
           </Button>
         </div>

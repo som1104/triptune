@@ -74,3 +74,74 @@ export function priceLine(totalPrice: number, confirmedParticipantCount: number 
   if (!confirmedParticipantCount) return total;
   return `${total} · 1인 약 ${formatPrice(perPersonPrice(totalPrice, confirmedParticipantCount))}`;
 }
+
+// ============================================================
+// 수용 인원 검증 — 등록 시트와 카드가 같은 규칙을 쓰도록 여기로 모았다.
+// ============================================================
+
+export interface CapacityCheck {
+  /** 확정 인원보다 몇 명 부족한지. 확정 인원을 모르면 0. */
+  shortBy: number;
+  /** 저장해도 되는 예약안인지 (인원이 0이면 아직 미완성이라 false). */
+  ok: boolean;
+}
+
+export function capacityCheck(
+  capacity: number,
+  confirmedParticipantCount: number | null
+): CapacityCheck {
+  const shortBy = confirmedParticipantCount ? Math.max(confirmedParticipantCount - capacity, 0) : 0;
+  return { shortBy, ok: shortBy === 0 && capacity > 0 };
+}
+
+// ============================================================
+// 투표 집계 — 동점과 미투표자를 같은 규칙으로 다룬다.
+// ============================================================
+
+export interface VoteTally<T extends { id: string }> {
+  /** 유효 투표 수 (한 사람당 한 표). */
+  validVotes: number;
+  /** 후보 id -> 득표 수. 0표 후보는 키가 없다. */
+  counts: Map<string, number>;
+  /** 득표 내림차순. 0표뿐이면 원래 순서가 유지된다. */
+  ranked: T[];
+  /** 최다 득표 수. 표가 하나도 없으면 0. */
+  topCount: number;
+  /** 최다 득표 후보들. 표가 없으면 빈 집합. */
+  topIds: Set<string>;
+  /** 최다 득표가 둘 이상이면 동점. */
+  isTie: boolean;
+  /** 아직 투표하지 않은 확정 인원 수. 확정 인원을 모르면 0. */
+  remainingVoters: number;
+}
+
+export function tallyVotes<T extends { id: string }>(
+  accommodations: T[],
+  votes: { accommodation_id: string }[],
+  confirmedParticipantCount: number | null
+): VoteTally<T> {
+  const validVotes = votes.length;
+  const counts = new Map<string, number>();
+  for (const v of votes) counts.set(v.accommodation_id, (counts.get(v.accommodation_id) ?? 0) + 1);
+
+  const topCount = validVotes === 0 ? 0 : Math.max(0, ...accommodations.map((a) => counts.get(a.id) ?? 0));
+  const topIds = new Set(
+    accommodations.filter((a) => topCount > 0 && (counts.get(a.id) ?? 0) === topCount).map((a) => a.id)
+  );
+
+  return {
+    validVotes,
+    counts,
+    ranked: [...accommodations].sort((a, b) => (counts.get(b.id) ?? 0) - (counts.get(a.id) ?? 0)),
+    topCount,
+    topIds,
+    isTie: topIds.size > 1,
+    remainingVoters:
+      confirmedParticipantCount != null ? Math.max(confirmedParticipantCount - validVotes, 0) : 0,
+  };
+}
+
+/** 득표율(%) — 투표가 없으면 0. */
+export function votePercentage(count: number, validVotes: number): number {
+  return validVotes === 0 ? 0 : Math.round((count / validVotes) * 100);
+}

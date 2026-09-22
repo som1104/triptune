@@ -12,7 +12,7 @@ import { useToast } from "@/components/ui/toast";
 import { createClient } from "@/lib/supabase/client";
 import { accommodationSchema, type AccommodationInput } from "@/lib/validation/accommodation";
 import { formatPrice, formatTripLength, perPersonPrice } from "@/lib/trip/format";
-import { parseRooms, roomTotals } from "@/lib/trip/stay";
+import { parseRooms, roomTotals, capacityCheck } from "@/lib/trip/stay";
 import type { Accommodation, StayBookingMode } from "@/lib/supabase/database.types";
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -31,6 +31,18 @@ function messageFor(error: { message: string }): string {
   if (key) return ERROR_MESSAGES[key];
   return error.message ? `저장하지 못했어요. (${error.message})` : "저장하지 못했어요.";
 }
+
+/* 미리보기가 실패하는 이유는 대부분 '우리 잘못'이 아니라 상대 사이트 사정이다.
+   무엇 때문인지 알려줘야 직접 입력할지, 링크를 바꿀지 판단할 수 있다. */
+const PREVIEW_ERRORS: Record<string, string> = {
+  HTTP_ERROR: "숙소 사이트가 자동 불러오기를 막고 있어요. 이름과 이미지는 직접 입력해주세요.",
+  TIMEOUT: "숙소 사이트 응답이 너무 느려요. 직접 입력해주세요.",
+  NOT_HTML: "이 링크는 웹페이지가 아니에요. 숙소 상세 페이지 주소인지 확인해주세요.",
+  BLOCKED_URL: "불러올 수 없는 주소예요. http(s) 로 시작하는 숙소 페이지 주소인지 확인해주세요.",
+  NETWORK_ERROR: "숙소 사이트에 연결하지 못했어요. 직접 입력해주세요.",
+  TOO_MANY_REDIRECTS: "링크가 너무 여러 번 이동해요. 최종 주소를 붙여넣어 주세요.",
+  NO_META: "이 페이지에는 불러올 정보가 없어요. 직접 입력해주세요.",
+};
 
 const MODE_OPTIONS: { value: StayBookingMode; label: string }[] = [
   { value: "whole", label: "숙소 전체 사용" },
@@ -124,8 +136,7 @@ export function AddAccommodationSheet({
     confirmedParticipantCount && totalPrice > 0
       ? perPersonPrice(totalPrice, confirmedParticipantCount)
       : null;
-  const shortBy = confirmedParticipantCount ? Math.max(confirmedParticipantCount - capacity, 0) : 0;
-  const capacityOk = shortBy === 0 && capacity > 0;
+  const { shortBy, ok: capacityOk } = capacityCheck(capacity, confirmedParticipantCount);
 
   function requestMode(next: StayBookingMode) {
     if (next === bookingMode) return;
@@ -156,12 +167,20 @@ export function AddAccommodationSheet({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url }),
       });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        console.warn("[link preview]", data);
+        const detail = data.reason ? ` (${data.reason})` : "";
+        showToast(
+          (PREVIEW_ERRORS[data.error] ?? "자동으로 불러오지 못했어요. 직접 입력해주세요.") + detail,
+          "error"
+        );
+        return;
+      }
       if (data.title) setValue("name", data.title.slice(0, 50));
       if (data.image) setValue("imageUrl", data.image);
       if (!data.title && !data.image) {
-        showToast("자동으로 불러오지 못했어요. 직접 입력해주세요.", "error");
+        showToast(PREVIEW_ERRORS.NO_META, "error");
       }
     } catch {
       showToast("자동으로 불러오지 못했어요. 직접 입력해주세요.", "error");

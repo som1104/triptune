@@ -90,6 +90,8 @@ export function TripTabBar({ tripId }: { tripId: string }) {
             key={tab.href}
             href={tab.href}
             aria-current={active ? "page" : undefined}
+            // 이미 보고 있는 탭을 다시 누르면 같은 화면을 새로 받아오게 된다.
+            onClick={active ? (e) => e.preventDefault() : undefined}
             className={`flex h-16 flex-col items-center justify-center gap-1 text-xs font-semibold leading-[1.33] ${
               active ? "text-ink" : "text-text-muted"
             }`}

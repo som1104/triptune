@@ -23,7 +23,7 @@ export function TripListCard({
   /** opens the host's 삭제 / the participant's 나가기 confirmation */
   onRemove?: (item: MyTrip) => void;
 }) {
-  const { trip, memberCount, nextAction, isHost, members } = item;
+  const { trip, memberCount, nextAction, isHost, members, reopenLabel } = item;
   const [menuOpen, setMenuOpen] = useState(false);
   const menuId = useId();
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -67,7 +67,9 @@ export function TripListCard({
       <div className="flex flex-1 flex-col gap-3 p-5">
         <div className="flex items-start justify-between gap-3">
           <p className="m-0 min-w-0 truncate text-[18px] font-[650] text-ink">{trip.title}</p>
-          <Badge variant={confirmed ? "primary" : "soft"}>{TRIP_STATUS_LABEL[trip.status]}</Badge>
+          <Badge variant={reopenLabel ? "conflict" : confirmed ? "primary" : "soft"}>
+            {reopenLabel ?? TRIP_STATUS_LABEL[trip.status]}
+          </Badge>
         </div>
 
         <p className="m-0 text-sm text-ink-soft">

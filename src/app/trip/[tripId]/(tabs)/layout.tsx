@@ -2,6 +2,7 @@ import { TripTabBar } from "@/components/layout/trip-tab-bar";
 import { TripTopNav } from "@/components/layout/trip-top-nav";
 import { TripRealtimeRefresher } from "@/components/trip/trip-realtime-refresher";
 import { ParticipantColors } from "@/components/ui/avatar";
+import { ReopenNotice } from "@/components/trip/reopen-notice";
 import { getTripContext } from "@/lib/trip/get-trip-context";
 
 export default async function TripTabsLayout({
@@ -21,6 +22,7 @@ export default async function TripTabsLayout({
       <div className="flex min-h-dvh flex-col">
         {ctx && <TripRealtimeRefresher tripId={tripId} currentStatus={ctx.trip.status} />}
         <TripTopNav tripId={tripId} />
+        {ctx && <ReopenNotice trip={ctx.trip} participants={ctx.participants} />}
         <div className="flex flex-1 flex-col">{children}</div>
         <TripTabBar tripId={tripId} />
       </div>

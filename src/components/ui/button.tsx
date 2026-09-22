@@ -31,7 +31,9 @@ function buttonClassName(
   fullWidth: boolean | undefined,
   className: string
 ) {
-  return `inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full border border-transparent font-semibold leading-[1.38] transition-[opacity,background-color] duration-[120ms] disabled:cursor-not-allowed disabled:opacity-40 ${variantClasses[variant]} ${sizeClasses[size]} ${fullWidth ? "w-full" : ""} ${className}`;
+  // touch-manipulation: 모바일 브라우저의 더블탭 확대 대기(약 300ms)를 없앤다.
+  // active:opacity-80: 응답이 오기 전에도 눌린 게 보인다. 색은 그대로다.
+  return `inline-flex touch-manipulation items-center justify-center gap-2 whitespace-nowrap rounded-full border border-transparent font-semibold leading-[1.38] transition-[opacity,background-color] duration-[120ms] active:opacity-80 disabled:cursor-not-allowed disabled:opacity-40 ${variantClasses[variant]} ${sizeClasses[size]} ${fullWidth ? "w-full" : ""} ${className}`;
 }
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {

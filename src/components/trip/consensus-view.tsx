@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowRight,
   Calendar,
+  Copy,
+  Share2,
   Clock,
   Gauge,
   MapPin,
@@ -113,6 +115,8 @@ interface SharedProps {
   tripTitle: string;
   destination: string;
   tripDays: number;
+  /** 아직 안 낸 사람에게 링크를 다시 보낼 때 쓴다 */
+  inviteToken: string;
 }
 
 export interface ParticipantNote {
@@ -357,6 +361,7 @@ function LiveConsensusView({
   togethernessConsensus,
   notes,
   summary,
+  inviteToken,
 }: LiveProps) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -455,6 +460,18 @@ function LiveConsensusView({
           우리 그룹의 날짜와 취향을 모았어요.
         </p>
 
+        {/* 다 내지 않았어도 화면은 그대로 보여주되, 임시 결과라는 것과 누가
+            남았는지를 먼저 알린다. */}
+        {respondedCount < totalParticipants && (
+          <PendingResponsesCard
+            respondedCount={respondedCount}
+            totalParticipants={totalParticipants}
+            pendingNicknames={pendingNicknames}
+            tripTitle={tripTitle}
+            inviteToken={inviteToken}
+          />
+        )}
+
         <div className="rounded-3xl bg-primary p-6 text-white md:px-7 md:py-6 desk:px-10 desk:py-8">
           <p className="m-0 mb-2 text-xs font-semibold leading-[1.33] text-on-primary-faint">
             한 줄 요약
@@ -526,14 +543,6 @@ function LiveConsensusView({
             <p className="m-0 text-base font-semibold text-ink">선호도 순위</p>
             <span className="text-xs text-text-muted">응답 {respondedCount}명 · 5단계 평균</span>
           </div>
-
-          {pendingNicknames.length > 0 && (
-            <div className="flex min-h-[52px] items-center gap-2.5 rounded-2xl border border-hairline-soft px-4 py-3">
-              <p className="m-0 flex-1 text-[13px] text-ink-soft">
-                {pendingNicknames.join(", ")}님이 아직 응답하지 않았어요.
-              </p>
-            </div>
-          )}
 
           <div className="overflow-hidden rounded-2xl border border-hairline-soft bg-surface">
             {rankedPreferences.map((r) => {
@@ -808,6 +817,108 @@ function LiveConsensusView({
         </div>
       </Modal>
     </div>
+  );
+}
+
+/* 아직 다 내지 않았을 때 보여주는 블록. 빈 화면이나 오류 대신, 지금까지 모인
+   것으로 계산한 '임시' 결과라는 사실과 누가 남았는지를 알려주고, 그 자리에서
+   링크를 다시 보낼 수 있게 한다. */
+function PendingResponsesCard({
+  respondedCount,
+  totalParticipants,
+  pendingNicknames,
+  tripTitle,
+  inviteToken,
+}: {
+  respondedCount: number;
+  totalParticipants: number;
+  pendingNicknames: string[];
+  tripTitle: string;
+  inviteToken: string;
+}) {
+  const { showToast } = useToast();
+  const [url, setUrl] = useState<string | null>(null);
+
+  // window.location 은 서버에 없다. 첫 렌더를 서버와 같게 두고 마운트 뒤 채운다.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setUrl(`${window.location.origin}/join/${inviteToken}`);
+  }, [inviteToken]);
+
+  async function copyLink() {
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast("초대 링크를 복사했어요.");
+    } catch {
+      showToast("링크 복사에 실패했어요.", "error");
+    }
+  }
+
+  async function share() {
+    if (!url) return;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: tripTitle,
+          text: `${tripTitle} 여행 날짜와 취향을 알려주세요.`,
+          url,
+        });
+        return;
+      } catch {
+        return; // 사용자가 공유 시트를 닫음
+      }
+    }
+    await copyLink();
+  }
+
+  return (
+    <section className="flex flex-col gap-3 rounded-3xl border border-hairline-soft bg-surface p-5 desk:p-6">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="m-0 mb-1 text-base font-semibold text-ink">아직 모으는 중이에요.</p>
+          <p className="m-0 text-sm leading-[1.45] text-ink-soft">
+            {totalParticipants}명 중 {respondedCount}명이 응답했어요. 아래 결과는 지금까지 모인
+            응답만으로 계산한 임시 결과라, 남은 응답이 들어오면 달라질 수 있어요.
+          </p>
+        </div>
+        <Badge variant="soft">
+          {respondedCount}/{totalParticipants}
+        </Badge>
+      </div>
+
+      {pendingNicknames.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[13px] text-text-muted">아직 응답 전</span>
+          {pendingNicknames.map((nickname) => (
+            <Badge key={nickname} variant="outline">
+              {nickname}
+            </Badge>
+          ))}
+        </div>
+      )}
+
+      <div className="flex gap-2">
+        <Button
+          variant="soft"
+          className="min-w-0 flex-1 desk:flex-none"
+          icon={<Copy size={16} aria-hidden="true" />}
+          iconPosition="start"
+          onClick={copyLink}
+        >
+          초대 링크 복사
+        </Button>
+        <Button
+          variant="outline"
+          className="min-w-0 flex-1 desk:flex-none"
+          icon={<Share2 size={16} aria-hidden="true" />}
+          iconPosition="start"
+          onClick={share}
+        >
+          공유
+        </Button>
+      </div>
+    </section>
   );
 }
 

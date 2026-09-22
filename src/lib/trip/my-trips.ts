@@ -1,4 +1,6 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { activeReopening, reopenStatusLabel } from "@/lib/trip/reopen";
 import type { Participant, Trip, TripStatus } from "@/lib/supabase/database.types";
 
 export interface MyTrip {
@@ -10,23 +12,26 @@ export interface MyTrip {
   members: { id: string; nickname: string }[];
   /** one line telling the user what this trip is waiting on */
   nextAction: string;
+  /** 재조율 중이면 '확정' 대신 보여줄 라벨 */
+  reopenLabel: string | null;
 }
 
 /* RLS on `trips` is `is_trip_participant(id)`, so a plain select already
    returns exactly the trips this browser's session takes part in — guest or
    signed in. No extra table, no localStorage list, nothing to migrate when a
    guest later saves the account. */
-export async function getMyTrips(): Promise<MyTrip[]> {
+export const getMyTrips = cache(async function getMyTrips(): Promise<MyTrip[]> {
   const supabase = await createClient();
 
-  const { data: userData } = await supabase.auth.getUser();
+  // 누구인지 확인하는 일과 여행 목록을 받아오는 일은 서로를 기다릴 필요가 없다.
+  // 목록은 어차피 RLS 가 이 세션의 여행으로만 좁혀서 돌려준다.
+  const [{ data: userData }, { data: trips }] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase.from("trips").select("*").order("created_at", { ascending: false }),
+  ]);
+
   const userId = userData.user?.id ?? null;
   if (!userId) return [];
-
-  const { data: trips } = await supabase
-    .from("trips")
-    .select("*")
-    .order("created_at", { ascending: false });
 
   const list = trips ?? [];
   if (list.length === 0) return [];
@@ -60,9 +65,10 @@ export async function getMyTrips(): Promise<MyTrip[]> {
       isHost: me?.role === "host",
       members: members.map((m) => ({ id: m.id, nickname: m.nickname })),
       nextAction: nextActionFor(trip.status, pending),
+      reopenLabel: reopenStatusLabel(trip.status, activeReopening(trip)),
     };
   });
-}
+});
 
 export function nextActionFor(status: TripStatus, pendingCount: number): string {
   switch (status) {

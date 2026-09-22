@@ -87,6 +87,7 @@ export default async function TripHomePage({
         finalAccommodation={finalAccommodation ?? null}
         participants={participants}
         summarySentence={summary?.summarySentence ?? null}
+        isHost={ctx.isHost}
       />
     );
   }

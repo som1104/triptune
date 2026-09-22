@@ -29,6 +29,7 @@ export default async function ConsensusPage({
     tripTitle: trip.title,
     destination: trip.destination,
     tripDays: trip.trip_days,
+    inviteToken: trip.invite_token,
   };
 
   if (trip.status === "collecting_responses") {

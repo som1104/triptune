@@ -269,3 +269,24 @@ export function buildGroupSummary(
 
   return prefix + suffix;
 }
+
+// ============================================================
+// Per-participant date tally (the 가능/미정/불가 summary on 내 날짜·취향 입력).
+// Kept here, next to the group-level maths, so both are unit-tested together.
+// ============================================================
+
+export interface DateStateCounts {
+  available: number;
+  tentative: number;
+  unavailable: number;
+}
+
+/** 아직 손대지 않은 날짜는 미정이다 — 화면의 기본값과 같은 규칙. */
+export function countDateStates(
+  allDates: string[],
+  states: Partial<Record<string, DateAvailability>>
+): DateStateCounts {
+  const counts: DateStateCounts = { available: 0, tentative: 0, unavailable: 0 };
+  for (const iso of allDates) counts[states[iso] ?? "tentative"]++;
+  return counts;
+}

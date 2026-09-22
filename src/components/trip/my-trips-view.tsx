@@ -22,6 +22,9 @@ const RECENT_CONFIRMED = 3;
 const GRID = "grid gap-4 md:grid-cols-2 md:gap-6 desk:grid-cols-3";
 
 export function MyTripsView({ trips }: { trips: MyTrip[] }) {
+  /* 서버에서 받은 목록을 그대로 쓰되, 방금 지운 여행은 서버 응답을 기다리지
+     않고 바로 빼준다. 실패하면 되돌린다. */
+  const [removedIds, setRemovedIds] = useState<string[]>([]);
   const router = useRouter();
   const params = useSearchParams();
   const { openAccountSheet } = useAccountSheet();
@@ -37,10 +40,11 @@ export function MyTripsView({ trips }: { trips: MyTrip[] }) {
     router.replace("/");
   }, [saved, showToast, router]);
 
-  const ongoing = trips.filter((t) => t.trip.status !== "confirmed");
-  const confirmed = trips.filter((t) => t.trip.status === "confirmed");
+  const visible = trips.filter((t) => !removedIds.includes(t.trip.id));
+  const ongoing = visible.filter((t) => t.trip.status !== "confirmed");
+  const confirmed = visible.filter((t) => t.trip.status === "confirmed");
   const visibleConfirmed = showAllConfirmed ? confirmed : confirmed.slice(0, RECENT_CONFIRMED);
-  const isEmpty = trips.length === 0;
+  const isEmpty = visible.length === 0;
 
   /* 주최자가 지우면 여행 자체가 사라지고, 참여자가 지우면 본인만 빠져요 —
      같은 ⋯ 메뉴지만 부르는 함수도 확인 문구도 다릅니다. */
@@ -48,16 +52,20 @@ export function MyTripsView({ trips }: { trips: MyTrip[] }) {
     if (!removeTarget) return;
     const { trip, isHost } = removeTarget;
     setRemoving(true);
+    // 카드를 먼저 치우고 모달을 닫는다 — 되돌릴 수 있게 id 를 기억해 둔다.
+    setRemovedIds((prev) => [...prev, trip.id]);
+    setRemoveTarget(null);
     try {
       const supabase = createClient();
       const { error } = await supabase.rpc(isHost ? "delete_trip" : "leave_trip", {
         p_trip_id: trip.id,
       });
       if (error) throw new Error(error.message);
-      setRemoveTarget(null);
       showToast(isHost ? "여행을 삭제했어요." : "여행에서 나왔어요.");
+      // 서버 목록도 맞춰두되, 화면은 이미 반영돼 있으므로 기다리지 않는다.
       router.refresh();
     } catch (err) {
+      setRemovedIds((prev) => prev.filter((id) => id !== trip.id));
       showToast(
         err instanceof Error ? err.message : "지우지 못했어요. 잠시 후 다시 시도해 주세요.",
         "error"
