@@ -4,6 +4,7 @@ import {
   computeDateCandidates,
   computePreferenceConsensus,
   computeStyleConsensus,
+  countDateStates,
   topDateCandidates,
   type DateResponseInput,
   type PreferenceResponseInput,
@@ -188,5 +189,135 @@ describe("buildGroupSummary", () => {
     };
     const pace = computeStyleConsensus(["packed", "packed"]);
     expect(buildGroupSummary(prefs, pace)).toBe("맛집을 중심으로, 알차게 즐기는 여행이에요.");
+  });
+});
+
+// ============================================================
+// 날짜별 상태 집계 (내 응답 화면 요약)
+// ============================================================
+
+describe("countDateStates", () => {
+  const range = ["2026-10-01", "2026-10-02", "2026-10-03", "2026-10-04"];
+
+  it("손대지 않은 날짜는 모두 미정으로 센다", () => {
+    expect(countDateStates(range, {})).toEqual({ available: 0, tentative: 4, unavailable: 0 });
+  });
+
+  it("칠한 날짜만 바뀌고 합은 언제나 후보 기간 전체와 같다", () => {
+    const counts = countDateStates(range, {
+      "2026-10-01": "available",
+      "2026-10-02": "available",
+      "2026-10-04": "unavailable",
+    });
+    expect(counts).toEqual({ available: 2, tentative: 1, unavailable: 1 });
+    expect(counts.available + counts.tentative + counts.unavailable).toBe(range.length);
+  });
+
+  it("후보 기간 밖의 날짜는 세지 않는다", () => {
+    expect(countDateStates(range, { "2026-11-01": "available" })).toEqual({
+      available: 0,
+      tentative: 4,
+      unavailable: 0,
+    });
+  });
+});
+
+// ============================================================
+// 날짜별 충돌 인원 — tripDays=1 이면 창 하나가 곧 하루다.
+// ============================================================
+
+describe("날짜별 충돌 인원", () => {
+  const byDate = (rows: DateResponseInput[], ids: string[]) => {
+    const perDay = computeDateCandidates("2026-10-01", "2026-10-03", 1, ids, rows);
+    return new Map(perDay.map((c) => [c.startDate, c]));
+  };
+
+  it("하루마다 가능·미정·불가 인원을 따로 센다", () => {
+    const map = byDate(
+      [
+        { participantId: "p1", date: "2026-10-01", availability: "available" },
+        { participantId: "p2", date: "2026-10-01", availability: "unavailable" },
+        { participantId: "p3", date: "2026-10-01", availability: "tentative" },
+        { participantId: "p1", date: "2026-10-02", availability: "available" },
+        { participantId: "p2", date: "2026-10-02", availability: "available" },
+        { participantId: "p3", date: "2026-10-02", availability: "available" },
+      ],
+      ["p1", "p2", "p3"]
+    );
+
+    expect(map.get("2026-10-01")).toMatchObject({
+      fullyAvailableCount: 1,
+      tentativeOnlyCount: 1,
+      unavailableCount: 1,
+      label: "조율 필요",
+    });
+    expect(map.get("2026-10-02")).toMatchObject({
+      fullyAvailableCount: 3,
+      unavailableCount: 0,
+      label: "합의 후보",
+    });
+    // 아무도 응답하지 않은 날은 전원 불가로 본다.
+    expect(map.get("2026-10-03")).toMatchObject({ unavailableCount: 3, fullyAvailableCount: 0 });
+  });
+
+  it("충돌이 적은 날이 앞에 온다", () => {
+    const ranked = computeDateCandidates(
+      "2026-10-01",
+      "2026-10-02",
+      1,
+      ["p1", "p2"],
+      [
+        { participantId: "p1", date: "2026-10-01", availability: "unavailable" },
+        { participantId: "p2", date: "2026-10-01", availability: "available" },
+        { participantId: "p1", date: "2026-10-02", availability: "available" },
+        { participantId: "p2", date: "2026-10-02", availability: "available" },
+      ]
+    );
+    expect(ranked[0].startDate).toBe("2026-10-02");
+    expect(ranked[0].unavailableCount).toBe(0);
+    expect(ranked[1].unavailableCount).toBe(1);
+  });
+});
+
+// ============================================================
+// 자유 입력(꼭 반영할 점)은 어떤 자동 계산에도 들어가지 않는다.
+// ============================================================
+
+describe("직접 입력 의견은 자동 점수에서 제외된다", () => {
+  const responses: PreferenceResponseInput[] = [
+    { participantId: "p1", nature: 2, food: 1, cafe: 0, activity: 1, pace: "relaxed", spendingStyle: "value" },
+    { participantId: "p2", nature: 1, food: 2, cafe: 0, activity: 1, pace: "relaxed", spendingStyle: "value" },
+  ];
+
+  /* 화면에서는 note 가 같은 행에 실려 오지만, 계산 함수의 입력 타입에는 없다.
+     혹시 섞여 들어오더라도 결과가 달라지지 않아야 한다. */
+  const withNotes = responses.map((r, i) => ({
+    ...r,
+    note: i === 0 ? "채식 식당이 꼭 필요해요" : "저는 카페를 정말 좋아합니다",
+  })) as PreferenceResponseInput[];
+
+  it("취향 평균과 분류가 그대로다", () => {
+    expect(computePreferenceConsensus(withNotes)).toEqual(computePreferenceConsensus(responses));
+  });
+
+  it("여행 스타일 합의도 그대로다", () => {
+    expect(computeStyleConsensus(withNotes.map((r) => r.pace))).toEqual(
+      computeStyleConsensus(responses.map((r) => r.pace))
+    );
+  });
+
+  it("한 줄 요약도 그대로다", () => {
+    const pace = computeStyleConsensus(responses.map((r) => r.pace));
+    expect(buildGroupSummary(computePreferenceConsensus(withNotes), pace)).toBe(
+      buildGroupSummary(computePreferenceConsensus(responses), pace)
+    );
+  });
+
+  it("자유 입력만 다르고 점수가 같은 두 응답은 완전히 같은 결과를 낸다", () => {
+    const a = computePreferenceConsensus(withNotes);
+    const b = computePreferenceConsensus(
+      responses.map((r) => ({ ...r, note: "전혀 다른 내용" })) as PreferenceResponseInput[]
+    );
+    expect(a).toEqual(b);
   });
 });

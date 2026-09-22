@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # 언제나 도는 검사 — Supabase 없이 끝난다.
+  static:
+    name: 타입·린트·단위 테스트·빌드
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 의존성 설치
+        run: npm ci
+
+      - name: TypeScript 타입 검사
+        run: npm run typecheck
+
+      - name: 린트
+        run: npm run lint
+
+      - name: 단위 테스트 (Vitest)
+        run: npm run test:unit
+
+      - name: 프로덕션 빌드
+        # 빌드는 Supabase 에 접속하지 않는다. 형식만 맞는 자리표시자를 쓴다.
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://ci-placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
+        run: npm run build
+
+  # 테스트용 Supabase 가 준비된 저장소에서만 돈다.
+  # 시크릿이 없으면 조용히 건너뛴다 — 운영 환경에는 절대 붙지 않는다.
+  e2e:
+    name: E2E (Playwright)
+    needs: static
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 테스트용 Supabase 시크릿 확인
+        id: guard
+        env:
+          URL: ${{ secrets.E2E_SUPABASE_URL }}
+          KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+        run: |
+          if [ -n "$URL" ] && [ -n "$KEY" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::E2E_SUPABASE_URL / E2E_SUPABASE_ANON_KEY 시크릿이 없어 E2E 를 건너뜁니다."
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.guard.outputs.ready == 'true'
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 의존성 설치
+        if: steps.guard.outputs.ready == 'true'
+        run: npm ci
+
+      - name: Playwright 브라우저 설치
+        if: steps.guard.outputs.ready == 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: 핵심 E2E 실행
+        if: steps.guard.outputs.ready == 'true'
+        env:
+          CI: "1"
+          E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+          E2E_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+          E2E_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+          E2E_ALLOW_REMOTE_SUPABASE: ${{ secrets.E2E_ALLOW_REMOTE_SUPABASE }}
+        run: npm run test:e2e
+
+      - name: 실패 시 리포트와 trace 업로드
+        if: ${{ failure() && steps.guard.outputs.ready == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

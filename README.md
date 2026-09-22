@@ -88,8 +88,9 @@ flowchart TD
 
 ### Test
 
-- Vitest — 날짜·취향 합의 계산 단위 테스트
-- Playwright — 여행 생성, 초대 참여와 전체 사용자 흐름 E2E 테스트
+- Vitest — 날짜·취향 합의, 숙소 예약안 계산, 투표 집계, 입력 검증 단위 테스트
+- Playwright — 주최자와 참여자를 분리한 세션으로 전체 사용자 흐름 E2E 테스트
+- GitHub Actions — 타입 검사·린트·단위 테스트·빌드 자동 실행
 
 ## 주요 설계 판단
 
@@ -130,7 +131,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_xxxxxxxxxxxxxxxxxxxxxxxx
 
 - 값은 Supabase Dashboard의 **Project Settings → API**에서 확인합니다.
 - anon 또는 publishable key는 클라이언트용 키이며 실제 접근 권한은 RLS가 통제합니다.
-- service role key는 애플리케이션에서 사용하지 않습니다.
+- service role key는 애플리케이션에서 사용하지 않습니다. E2E 테스트 데이터 정리에만 선택적으로 쓰이며, Node 쪽에서만 읽고 브라우저 번들에는 들어가지 않습니다.
 
 ### 2. Supabase 프로젝트 준비
 
@@ -146,6 +147,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_xxxxxxxxxxxxxxxxxxxxxxxx
 | `0005_flexible_dates_and_togetherness.sql` | 최대 60일 후보 범위, 함께 다니는 정도와 자유 의견 |
 | `0006_stay_booking_plan.sql` | 독채·다객실 숙소 예약 구성안 |
 | `0007_reopen_stay_stage.sql` | 투표 및 숙소 후보 수집 단계 다시 열기 |
+| `0008_reopen_after_confirm.sql` | 최종 확정 이후 주최자가 필요한 단계만 다시 열기 |
 
 3. **Authentication → Sign In / Providers**에서 Anonymous Sign-Ins를 활성화합니다.
 4. Google 계정 연결을 사용할 경우 Google Provider와 Manual Linking을 활성화하고 OAuth redirect URL을 설정합니다.
@@ -163,16 +165,132 @@ npm run dev
 
 ## 테스트
 
+| 명령어 | 하는 일 |
+| --- | --- |
+| `npm run test` | 기본 테스트 — 단위 테스트(Vitest) |
+| `npm run test:unit` | 단위 테스트만 |
+| `npm run test:e2e` | E2E(Playwright) headless 실행 |
+| `npm run test:e2e:ui` | Playwright UI 모드 (단계별로 되감아 보기) |
+| `npm run test:e2e:headed` | 실제 브라우저 창을 보면서 실행 |
+| `npm run test:all` | 타입 검사 → 린트 → 단위 테스트 → 빌드 → E2E |
+| `npm run typecheck` | `tsc --noEmit` |
+
+### 단위 테스트
+
+데이터베이스도 브라우저도 필요 없습니다. 순수 계산 로직만 검증합니다.
+
 ```bash
-npm run lint
-npm run test
-npm run test:e2e
-npm run build
+npm run test:unit
 ```
 
-- `npm run test`: 날짜 후보, 취향 분류, 충돌과 그룹 요약 계산을 검증합니다.
-- `npm run test:e2e`: 프로덕션 빌드를 구동해 여행 생성·참여와 전체 흐름을 검증합니다.
-- E2E 테스트는 연결된 Supabase 프로젝트에 테스트 데이터를 생성하고 익명 로그인 Rate Limit의 영향을 받을 수 있습니다.
+- `src/lib/trip/consensus.test.ts` — 날짜별 가능·미정·불가 집계, 연속 날짜 후보 계산,
+  날짜별 충돌 인원, 취향 평균·충돌 판정, 한 줄 요약, **자유 입력(꼭 반영할 점)이 자동 점수에서 제외되는지**
+- `src/lib/trip/stay.test.ts` — 전체/객실 예약안 계산(객실 수·총 수용 인원·총액·1인당),
+  수용 인원 부족 판정, 동점 투표와 미투표자 처리
+- `src/lib/trip/format.test.ts` · `calendar.test.ts` — 금액·기간 표기, 달력 격자
+- `src/lib/validation/trip.test.ts` · `accommodation.test.ts` — 후보 기간 60일 상한, 예약안 입력 규칙
+- `src/lib/trip/reopen.test.ts` — 조율 재개 배너·라벨
+- `src/lib/server/link-preview.test.ts` — og 태그 파싱
+
+### E2E 테스트
+
+핵심 사용자 흐름 전체를 주최자·참여자 A·참여자 B 세 개의 독립 브라우저 세션으로 검증합니다.
+
+| 파일 | 검증하는 흐름 |
+| --- | --- |
+| `e2e/scenario-a-consensus.spec.ts` | 여행 생성 → 초대 → 세 사람 응답 → 저장 후 그룹 합의 자동 이동 → 임시 합의 표시 → Realtime 갱신 → 주최자 확정 |
+| `e2e/scenario-b-stay.spec.ts` | 숙소 전체/객실 예약안 등록과 계산, 수용 인원 부족 차단, 투표와 Realtime 결과 공개, 참여자 권한, 최종 확정 |
+| `e2e/scenario-c-reopen.spec.ts` | 확정 이후 `숙소 투표만` / `날짜·취향부터` 재개, 데이터 보존, 다른 브라우저 실시간 반영 |
+| `e2e/scenario-d-errors.spec.ts` | 잘못된 초대 링크, 없는 여행, 닉네임 중복, 저장 실패, 주최자 전용 RPC 직접 호출, 나가기·삭제, 새로고침·뒤로가기 |
+
+#### 1. 테스트용 Supabase 준비
+
+**운영 Supabase 는 자동 테스트 대상으로 쓸 수 없습니다.** 설정이 운영 주소를 가리키면
+테스트가 시작 전에 멈춥니다. 아래 중 하나를 준비하세요.
+
+**① 로컬 Supabase (권장)** — Docker 필요
+
+```bash
+npm i -D supabase
+npx supabase init          # 이미 supabase/ 가 있으면 건너뜀
+npx supabase start         # API URL 과 anon/service_role key 를 출력합니다
+# 출력된 API URL 로 마이그레이션을 순서대로 실행
+npx supabase db reset      # supabase/migrations/*.sql 을 번호 순으로 적용
+```
+
+**② 테스트 전용 Supabase 프로젝트** — 운영과 별개로 새 프로젝트를 만들고,
+`supabase/migrations/` 의 SQL 을 번호 순으로 SQL Editor 에서 실행한 뒤
+**Authentication → Sign In / Providers → Anonymous Sign-Ins** 를 켭니다.
+이 경우 `E2E_ALLOW_REMOTE_SUPABASE=1` 을 함께 설정해야 합니다.
+
+#### 2. 환경 변수
+
+`.env.example` 의 `E2E_*` 항목을 보고 저장소 루트에 `.env.test` 를 만듭니다
+(`.env.test` 는 `.gitignore` 에 걸려 커밋되지 않습니다).
+
+```bash
+E2E_SUPABASE_URL=http://127.0.0.1:54321
+E2E_SUPABASE_ANON_KEY=...
+# 정리용(선택). Node 쪽에서만 쓰이고 브라우저·리포트에는 절대 나가지 않습니다.
+E2E_SUPABASE_SERVICE_ROLE_KEY=...
+```
+
+필수 변수가 없으면 런타임 오류 대신 **빠진 변수 이름과 설정 방법**을 출력하고 중단합니다.
+
+#### 3. 실행
+
+```bash
+npx playwright install chromium   # 최초 1회
+npm run test:e2e
+```
+
+앱은 테스트가 직접 프로덕션 빌드해서 `http://127.0.0.1:3100` 에 띄웁니다
+(`next dev` 의 첫 진입 컴파일 지연 때문에 테스트가 흔들리는 것을 막기 위해서입니다).
+개발 서버 포트(3000)와 겹치지 않으므로 `npm run dev` 를 켜둔 채로도 돌릴 수 있습니다.
+
+#### 4. 테스트 데이터
+
+- 이 실행이 만든 여행에는 `[E2E-<실행ID>] 제주도` 처럼 **실행마다 다른 접두사**가 붙습니다.
+- 끝나면 그 접두사로 시작하는 여행만 지웁니다 (`e2e/support/cleanup.ts`).
+  테이블을 비우거나 접두사 없는 데이터를 건드리는 코드는 없습니다.
+- `E2E_SUPABASE_SERVICE_ROLE_KEY` 가 없으면 정리를 건너뛰고, 남은 접두사를 콘솔에 알려줍니다.
+- 각 테스트는 스스로 필요한 상태를 만들며 실행 순서에 의존하지 않습니다.
+
+#### 5. 실패했을 때
+
+```
+playwright-report/     # npx playwright show-report
+test-results/          # 실패한 테스트의 screenshot · video · trace.zip
+npx playwright show-trace test-results/<...>/trace.zip
+```
+
+trace 는 실패한 테스트에서만, video 와 screenshot 도 실패 시에만 남습니다.
+
+### GitHub Actions
+
+`.github/workflows/ci.yml` 이 push 와 pull request 마다 돕니다.
+
+1. 의존성 설치 → 2. 타입 검사 → 3. 린트 → 4. 단위 테스트 → 5. 프로덕션 빌드
+   (여기까지는 Supabase 없이 언제나 실행됩니다)
+6. Playwright 브라우저 설치 → 7. 핵심 E2E → 8. 실패 시 리포트·trace 업로드
+   (**아래 시크릿이 등록된 저장소에서만** 실행되고, 없으면 조용히 건너뜁니다)
+
+필요한 GitHub Secrets (Settings → Secrets and variables → Actions):
+
+| Secret | 필수 | 설명 |
+| --- | --- | --- |
+| `E2E_SUPABASE_URL` | ✅ | 테스트 전용 Supabase 주소. **운영 주소를 넣지 마세요.** |
+| `E2E_SUPABASE_ANON_KEY` | ✅ | 테스트용 anon(publishable) 키 |
+| `E2E_ALLOW_REMOTE_SUPABASE` | 원격 사용 시 | 값 `1`. 로컬이 아닌 테스트 프로젝트를 쓴다는 명시적 확인 |
+| `E2E_SUPABASE_SERVICE_ROLE_KEY` | 선택 | 실행 후 테스트 데이터 정리용 |
+
+### SQL 테스트
+
+`reopen_after_confirm` 등 서버 함수의 권한·상태 전이는 Postgres 를 직접 띄워 검증합니다.
+
+```bash
+supabase/tests/run.sh     # PGPORT 환경변수로 접속 포트 지정
+```
 
 ## Vercel 배포
 
@@ -185,12 +303,12 @@ npm run build
 
 ### 배포 전 체크리스트
 
-- [ ] 마이그레이션 0001~0007을 번호순으로 실행했는가
+- [ ] 마이그레이션 0001~0008을 번호순으로 실행했는가
 - [ ] Anonymous Sign-Ins가 활성화되어 있는가
 - [ ] Google을 사용할 경우 Provider와 Manual Linking을 설정했는가
 - [ ] Site URL과 Redirect URLs가 로컬·배포 주소를 포함하는가
 - [ ] 익명 로그인 Rate Limit이 예상 트래픽에 맞는가
-- [ ] `npm run lint`, `npm run test`, `npm run build`가 성공하는가
+- [ ] `npm run typecheck`, `npm run lint`, `npm run test`, `npm run build`가 성공하는가
 - [ ] 게스트 생성 → 초대 참여 → 합의 → 숙소 투표 → 최종 확정 흐름이 동작하는가
 
 ## 프로젝트 구조
@@ -217,8 +335,14 @@ src/
    ├─ trip/                             합의 계산과 여행 데이터 로직
    └─ validation/                       여행·숙소 입력 검증
 
-supabase/migrations/                    SQL 스키마와 RPC 변경 이력
-e2e/                                    Playwright 사용자 흐름 테스트
+supabase/
+├─ migrations/                          SQL 스키마와 RPC 변경 이력
+└─ tests/                               서버 함수 권한·상태 전이 SQL 테스트
+e2e/
+├─ scenario-*.spec.ts                   핵심 사용자 흐름 E2E
+├─ support/                             액터·플로우·환경변수·데이터 정리 유틸
+└─ global-setup / global-teardown       환경 검증과 실행별 데이터 정리
+.github/workflows/ci.yml                타입·린트·단위·빌드 (+조건부 E2E)
 ```
 
 ## 현재 범위
