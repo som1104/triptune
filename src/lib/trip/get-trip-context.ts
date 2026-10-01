@@ -20,7 +20,7 @@ export const getTripContext = cache(async function getTripContext(
 ): Promise<TripContext | null> {
   const supabase = await createClient();
 
-  const [{ data: userData }, { data: trip }, { data: participants }] = await Promise.all([
+  const [{ data: userData }, tripRes, participantRes] = await Promise.all([
     supabase.auth.getUser(),
     supabase.from("trips").select("*").eq("id", tripId).maybeSingle(),
     supabase
@@ -30,10 +30,20 @@ export const getTripContext = cache(async function getTripContext(
       .order("joined_at", { ascending: true }),
   ]);
 
+  /* 못 불러온 것과 없는 것은 다르다. 조회가 실패했는데 null 로 뭉개면 화면에
+     "이 여행을 찾을 수 없어요"가 떠서, 멀쩡한 여행을 사용자가 사라진 줄 알게
+     된다. 실패는 실패로 올려보내 오류 화면이 다시 시도할 수 있게 한다. */
+  const failure = tripRes.error ?? participantRes.error;
+  if (failure) {
+    console.error("[getTripContext]", tripId, failure.code, failure.message);
+    throw new Error(`여행 정보를 불러오지 못했어요. (${failure.message})`);
+  }
+
+  const trip = tripRes.data;
   if (!trip) return null;
 
   const userId = userData.user?.id;
-  const list = participants ?? [];
+  const list = participantRes.data ?? [];
   const me = list.find((p) => p.user_id === userId) ?? null;
 
   return {
