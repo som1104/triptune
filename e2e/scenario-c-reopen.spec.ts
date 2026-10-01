@@ -59,7 +59,7 @@ test("C1. 숙소 투표만 다시 열면 날짜·취향 합의는 그대로 남�
   try {
     await test.step("참여자에게는 재개 버튼이 보이지 않는다", async () => {
       await guest.page.goto(`/trip/${trip.id}`);
-      await expect(guest.page.getByText(/여행이 확정됐어요!/).first()).toBeVisible();
+      await expect(text(guest.page, /여행이 확정됐어요!/)).toBeVisible();
       await expect(guest.page.getByRole("button", { name: "조율 다시 열기" })).toHaveCount(0);
     });
 
@@ -71,11 +71,17 @@ test("C1. 숙소 투표만 다시 열면 날짜·취향 합의는 그대로 남�
     });
 
     await test.step("숙소 확정만 풀리고 후보와 투표는 그대로다", async () => {
-      await expect(host.page.getByRole("heading", { name: "숙소 투표 중" })).toBeVisible({ timeout: 20_000 });
+      /* 확정이 풀려 투표 단계로 돌아왔고, 내가 냈던 표도 그대로 남아 있다.
+         이미 투표한 사람에게는 투표용지 대신 '투표를 제출했어요.'가 보인다. */
+      await expect(text(host.page, "투표를 제출했어요.")).toBeVisible({ timeout: 20_000 });
+      await expect(text(host.page, "내가 선택한 숙소")).toBeVisible();
+      await expect(text(host.page, STAY_A)).toBeVisible();
+
+      // 다시 고르러 들어가면 기존 후보 두 건이 모두 남아 있다.
+      await button(host.page, "내 투표 변경").click();
+      await expect(host.page.getByRole("heading", { name: "숙소 투표 중" })).toBeVisible();
       await expect(text(host.page, STAY_A)).toBeVisible();
       await expect(text(host.page, STAY_B)).toBeVisible();
-      // 기존 투표가 남아 있으므로 '내 투표 변경'이 보인다.
-      await expect(button(host.page, "내 투표 변경")).toBeVisible();
     });
 
     await test.step("날짜·취향 합의는 확정된 그대로 남아 있다", async () => {
@@ -84,7 +90,8 @@ test("C1. 숙소 투표만 다시 열면 날짜·취향 합의는 그대로 남�
     });
 
     await test.step("다른 브라우저에도 새로고침 없이 반영된다", async () => {
-      await expect(text(guest.page, /다시 열렸어요|재조율|다시 열기/)).toBeVisible({ timeout: 25_000 });
+      await expect(text(guest.page, "주최자가 숙소 투표를 다시 열었어요.")).toBeVisible({ timeout: 35_000 });
+      await expect(text(guest.page, /예약이 취소됐어요/)).toBeVisible();
     });
   } finally {
     await Promise.all([host.close(), guest.close()]);
@@ -122,18 +129,30 @@ test("C2. 날짜·취향부터 다시 열면 응답은 남고 숙소는 재검�
     });
 
     await test.step("바뀐 응답이 주최자 화면에 새로고침 없이 반영된다", async () => {
-      await expect(text(host.page, "조율 필요")).toBeVisible({ timeout: 25_000 });
-    });
-
-    await test.step("숙소 후보는 삭제되지 않고 남아 있다", async () => {
-      await host.page.goto(`/trip/${trip.id}/stay`);
-      await expect(text(host.page, STAY_A)).toBeVisible({ timeout: 20_000 });
-      await expect(text(host.page, STAY_B)).toBeVisible();
+      await expect(text(host.page, "조율 필요")).toBeVisible({ timeout: 35_000 });
     });
 
     await test.step("참여자에게 재개 안내와 사유가 보인다", async () => {
       await guest.page.reload();
-      await expect(text(guest.page, /일정이 바뀌었어요/)).toBeVisible({ timeout: 20_000 });
+      await expect(text(guest.page, "주최자가 날짜와 취향 조율을 다시 열었어요.")).toBeVisible({
+        timeout: 20_000,
+      });
+      await expect(text(guest.page, /일정이 바뀌었어요/)).toBeVisible();
+    });
+
+    await test.step("숙소 후보는 삭제되지 않고, 날짜를 다시 확정하면 그대로 돌아온다", async () => {
+      // 날짜를 다시 조율하는 동안 숙소 단계는 잠긴다 — 후보가 지워진 것이 아니다.
+      await host.page.goto(`/trip/${trip.id}/stay`);
+      await expect(text(host.page, "그룹 합의가 확정되면 숙소 후보를 등록할 수 있어요.")).toBeVisible({
+        timeout: 20_000,
+      });
+
+      await host.page.goto(`/trip/${trip.id}/consensus`);
+      await confirmDirection(host.page);
+
+      await host.page.goto(`/trip/${trip.id}/stay`);
+      await expect(text(host.page, STAY_A)).toBeVisible({ timeout: 20_000 });
+      await expect(text(host.page, STAY_B)).toBeVisible();
     });
   } finally {
     await Promise.all([host.close(), guest.close()]);

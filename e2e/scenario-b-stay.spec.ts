@@ -3,6 +3,7 @@ import { newActor, type Actor } from "./support/actors";
 import { button, text } from "./support/ui";
 import {
   addStay,
+  closeStaySheet,
   castVote,
   confirmDirection,
   confirmFinalStay,
@@ -44,6 +45,16 @@ test("B. 예약안 등록 → 투표 → 실시간 반영 → 주최자 확정",
   const { host, guest, trip } = await seedConfirmedDirection(browser, "숙소");
 
   try {
+    /* 한 사람이 올릴 수 있는 후보는 2개까지다. 등록하지 않고 끝나는 이 검사를
+       먼저 해야 아래 두 건을 올릴 자리가 남는다. */
+    await test.step("수용 인원이 참여 인원보다 적으면 등록할 수 없다", async () => {
+      await fillStaySheet(host.page, { mode: "whole", name: "너무 작은 집", capacity: 1, totalPrice: 50000 });
+      await expect(text(host.page, /1명을 더 수용할 수 있는 객실이 필요해요/)).toBeVisible();
+      await expect(button(host.page, "후보로 등록하기")).toBeDisabled();
+      await closeStaySheet(host.page);
+      await expect(host.page.getByText("너무 작은 집")).toHaveCount(0);
+    });
+
     await test.step("숙소 전체 사용 예약안을 등록한다", async () => {
       await addStay(host.page, {
         mode: "whole",
@@ -73,14 +84,6 @@ test("B. 예약안 등록 → 투표 → 실시간 반영 → 주최자 확정",
       await expect(text(host.page, "객실 나눠쓰는 호텔")).toBeVisible({ timeout: 15_000 });
     });
 
-    await test.step("수용 인원이 참여 인원보다 적으면 등록할 수 없다", async () => {
-      await fillStaySheet(host.page, { mode: "whole", name: "너무 작은 집", capacity: 1, totalPrice: 50000 });
-      await expect(text(host.page, /1명을 더 수용할 수 있는 객실이 필요해요/)).toBeVisible();
-      await expect(button(host.page, "후보로 등록하기")).toBeDisabled();
-      await host.page.keyboard.press("Escape");
-      await expect(host.page.getByText("너무 작은 집")).toHaveCount(0);
-    });
-
     await test.step("투표를 시작하고 두 사람이 서로 다른 숙소에 투표한다", async () => {
       await startVoting(host.page);
       await castVote(host.page, "통째로 빌리는 집");
@@ -91,7 +94,7 @@ test("B. 예약안 등록 → 투표 → 실시간 반영 → 주최자 확정",
     });
 
     await test.step("모두 투표하면 결과가 새로고침 없이 열린다", async () => {
-      await expect(text(host.page, "투표 결과")).toBeVisible({ timeout: 25_000 });
+      await expect(text(host.page, "투표 결과")).toBeVisible({ timeout: 35_000 });
       await expect(text(host.page, /표가 같아요/)).toBeVisible();
     });
 
@@ -116,13 +119,16 @@ test("B2. 표가 하나도 없으면 확정할 수 없고 되돌릴 길이 있�
   const { host, guest } = await seedConfirmedDirection(browser, "무표");
 
   try {
+    // 투표는 후보가 2개 이상일 때만 시작할 수 있다.
     await addStay(host.page, { mode: "whole", name: "아무도 안 뽑은 집", capacity: 4, totalPrice: 300000 });
+    await addStay(host.page, { mode: "whole", name: "이것도 안 뽑힌 집", capacity: 4, totalPrice: 320000 });
     await startVoting(host.page);
     await button(host.page, /지금 투표 마감|투표 종료하기/).click();
     await button(host.page, "투표 종료", true).click();
 
     await expect(text(host.page, "아직 투표가 없어요.")).toBeVisible({ timeout: 20_000 });
-    await expect(host.page.getByRole("button", { name: "이 숙소로 확정하기" })).toHaveCount(0);
+    // 버튼은 남아 있되 눌리지 않는다 — 대신 되돌릴 길 두 가지가 열려 있어야 한다.
+    await expect(button(host.page, "이 숙소로 확정하기")).toBeDisabled();
     await expect(button(host.page, "투표 다시 열기")).toBeVisible();
     await expect(button(host.page, "후보 다시 모으기")).toBeVisible();
   } finally {

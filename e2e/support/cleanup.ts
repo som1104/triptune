@@ -32,7 +32,11 @@ export async function cleanupRunData(): Promise<void> {
   const { data, error } = await admin.from("trips").delete().like("title", pattern).select("id");
 
   if (error) {
-    console.warn(`[e2e] 테스트 데이터 정리 실패: ${error.message}`);
+    const hint = /JWT/i.test(error.message)
+      ? " — E2E_SUPABASE_SERVICE_ROLE_KEY 가 인증 키가 아닙니다. `npx supabase status` 의 🔑 Authentication Keys → Secret 값(sb_secret_… 또는 eyJ…)을 넣어주세요. 📦 Storage (S3) 의 Secret Key 가 아닙니다."
+      : "";
+    console.warn(`[e2e] 테스트 데이터 정리 실패: ${error.message}${hint}`);
+    console.warn(`[e2e] 제목이 "${prefix}" 로 시작하는 여행이 남아 있습니다.`);
     return;
   }
   console.log(`[e2e] "${prefix}" 여행 ${data?.length ?? 0}건을 정리했습니다.`);

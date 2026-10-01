@@ -24,8 +24,10 @@ export default defineConfig({
 
   /* 익명 로그인에는 Supabase 쪽 속도 제한이 걸려 있고, 한 여행 안에서 여러
      사람이 동시에 움직이는 시나리오라 파일 단위 병렬만 허용한다. */
+  /* 모든 시나리오가 같은 로컬 Supabase 한 대를 쓴다. 파일을 동시에 돌리면
+     Realtime 구독이 서로 자원을 뺏어 결과가 실행마다 달라진다. */
   fullyParallel: false,
-  workers: isCI ? 1 : 2,
+  workers: 1,
   forbidOnly: isCI,
   retries: isCI ? 1 : 0,
   timeout: 90_000,

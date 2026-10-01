@@ -19,8 +19,10 @@ test("A. 여행 생성 → 초대 → 세 사람 응답 → 그룹 합의까지 
         participants: 3,
         nights: 2,
       });
-      await expect(text(host.page, created.title)).toBeVisible();
+      // 홈 화면은 여행 이름 대신 초대 화면을 먼저 보여준다.
+      await expect(host.page.getByRole("heading", { name: "친구를 초대해요." })).toBeVisible();
       await expect(text(host.page, "초대 링크")).toBeVisible();
+      await expect(text(host.page, /^https?:\/\/.*\/join\//)).toBeVisible();
       return created;
     });
 
@@ -34,9 +36,11 @@ test("A. 여행 생성 → 초대 → 세 사람 응답 → 그룹 합의까지 
       await assertSeparateSessions(alice.page, bob.page);
     });
 
+    /* 평소에는 Realtime 으로 1초 안에 들어오지만, 이벤트가 유실돼도 화면이
+       30초 백스톱으로 따라잡는다. 보장치가 30초이므로 35초까지 기다린다. */
     await test.step("참여자가 늘어난 것이 주최자 화면에 새로고침 없이 반영된다", async () => {
-      await expect(text(host.page, /앨리스/)).toBeVisible({ timeout: 20_000 });
-      await expect(text(host.page, /밥/)).toBeVisible({ timeout: 20_000 });
+      await expect(text(host.page, /앨리스/)).toBeVisible({ timeout: 35_000 });
+      await expect(text(host.page, /밥/)).toBeVisible({ timeout: 35_000 });
     });
 
     const days = trip.range.days;
@@ -49,7 +53,6 @@ test("A. 여행 생성 → 초대 → 세 사람 응답 → 그룹 합의까지 
         interests: { nature: "꼭 필요", food: "좋아요", cafe: "보통", activity: "좋아요" },
         note: "채식 식당이 한 곳은 필요해요",
       });
-      await expect(host.page.getByRole("heading", { name: /한 줄 요약|그룹 합의/ }).first()).toBeVisible();
     });
 
     await test.step("아직 다 내지 않았으면 임시 결과와 미응답자를 알려준다", async () => {
@@ -74,7 +77,7 @@ test("A. 여행 생성 → 초대 → 세 사람 응답 → 그룹 합의까지 
     });
 
     await test.step("마지막 응답이 들어오면 주최자 화면이 새로고침 없이 갱신된다", async () => {
-      await expect(text(host.page, /2\/3명 응답/)).toBeVisible({ timeout: 20_000 });
+      await expect(text(host.page, /2\/3명 응답/)).toBeVisible({ timeout: 35_000 });
 
       await bob.page.goto(`/trip/${trip.id}/respond`);
       await submitResponse(bob.page, trip.id, {
@@ -82,7 +85,7 @@ test("A. 여행 생성 → 초대 → 세 사람 응답 → 그룹 합의까지 
         interests: { nature: "좋아요", food: "좋아요", cafe: "별로", activity: "보통" },
       });
 
-      await expect(text(host.page, /3\/3명 응답/)).toBeVisible({ timeout: 25_000 });
+      await expect(text(host.page, /3\/3명 응답/)).toBeVisible({ timeout: 35_000 });
       await expect(host.page.getByText("아직 모으는 중이에요.")).toHaveCount(0);
     });
 

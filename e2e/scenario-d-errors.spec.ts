@@ -131,9 +131,11 @@ test("D5. 참여자가 주최자 전용 RPC 를 직접 호출해도 서버가 �
 
     await api.dispose();
 
-    // 서버가 막았으니 여행은 그대로 살아 있다.
+    // 서버가 막았으니 여행은 그대로 살아 있고, 합의도 확정되지 않았다.
     await host.page.reload();
-    await expect(text(host.page, trip.title)).toBeVisible();
+    await expect(host.page.getByRole("heading", { name: "친구를 초대해요." })).toBeVisible();
+    await host.page.goto(`/trip/${trip.id}/consensus`);
+    await expect(button(host.page, "이 방향으로 확정하기")).toBeVisible();
   } finally {
     await Promise.all([host.close(), guest.close()]);
   }
@@ -196,7 +198,7 @@ test("D7. 직접 URL 진입·새로고침·뒤로가기에도 상태가 유지�
 
       await host.page.goForward();
       await expect(host.page).toHaveURL(new RegExp(`/trip/${trip.id}$`));
-      await expect(text(host.page, trip.title)).toBeVisible();
+      await expect(text(host.page, "참여 현황")).toBeVisible();
     });
 
     await test.step("확정 이후 참여자가 직접 응답 URL 로 들어가면 보기 전용이다", async () => {

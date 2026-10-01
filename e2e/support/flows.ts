@@ -41,9 +41,24 @@ export async function createTrip(
 
   await button(page, "여행 만들기").click();
   await page.waitForURL(/\/trip\/[0-9a-f-]{36}$/);
+  await dismissGuestNotice(page);
 
   const id = page.url().match(/\/trip\/([0-9a-f-]{36})/)![1];
   return { id, title, inviteLink: await inviteLink(page), range };
+}
+
+/* 여행을 처음 만든 주최자에게는 "현재 게스트로 이용 중이에요." 모달이 한 번 뜬다.
+   화면을 덮기 때문에 닫지 않으면 이후 클릭이 전부 모달에 가로막힌다.
+   (localStorage 에 기록되므로 같은 여행에서 다시 뜨지 않는다.) */
+export async function dismissGuestNotice(page: Page): Promise<void> {
+  const later = page.getByRole("button", { name: "괜찮아요", exact: true });
+  try {
+    await later.waitFor({ state: "visible", timeout: 5000 });
+  } catch {
+    return; // 안 뜨는 화면도 있다 — 그럼 닫을 것도 없다
+  }
+  await later.click();
+  await expect(later).toBeHidden();
 }
 
 /** 초대 링크 카드는 마운트 후 효과에서 origin 을 채운다 — 그 전에 읽으면 "..." 이다. */
@@ -182,6 +197,12 @@ export async function fillStaySheet(page: Page, stay: StayInput): Promise<void> 
   }
 }
 
+/** 등록하지 않고 시트만 닫는다. */
+export async function closeStaySheet(page: Page): Promise<void> {
+  await page.getByRole("button", { name: "닫기" }).filter({ visible: true }).first().click();
+  await expect(page.getByLabel("숙소 링크")).toBeHidden();
+}
+
 export async function addStay(page: Page, stay: StayInput): Promise<void> {
   await fillStaySheet(page, stay);
   await button(page, "후보로 등록하기").click();
@@ -208,7 +229,9 @@ export async function castVote(page: Page, stayName: string): Promise<void> {
 export async function confirmFinalStay(page: Page): Promise<void> {
   await button(page, "이 숙소로 확정하기").click();
   await button(page, "확정하기", true).click();
-  await expect(text(page, /여행이 확정됐어요!/)).toBeVisible({ timeout: 15_000 });
+  // 확정 직후에는 숙소 화면이 '최종 숙소'로 바뀐다.
+  // '여행이 확정됐어요!'는 홈(/trip/[id])의 최종 여행 화면 문구다.
+  await expect(page.getByRole("heading", { name: "최종 숙소" })).toBeVisible({ timeout: 15_000 });
 }
 
 /** 확정된 여행에서 주최자가 조율을 다시 연다. */
