@@ -1,246 +1,287 @@
 # TRIPTUNE
 
-친구들과 여행 날짜와 취향을 조율하고, 숙소를 투표로 정해 여행을 확정하는 협업 여행 플래너.
+> 친구들과 여행 날짜·취향·숙소를 함께 조율하고 하나의 일정으로 합의하는 협업 여행 플래너
 
-가입 없이 초대 링크와 닉네임만으로 참여하고(Supabase Anonymous Auth), 여러 사람이 동시에 같은 여행에 접속해도 실시간으로 반영됩니다.
+여행을 준비할 때 단체 채팅방에서 각자의 가능한 날짜를 다시 묻고, 취향을 정리하고, 숙소 링크를 주고받으며 의견을 모으는 과정을 하나의 흐름으로 만들었습니다.
+
+가입 절차 없이 **초대 링크 + 닉네임**으로 참여할 수 있고, 여러 사용자가 동시에 응답하거나 투표하면 **Supabase Realtime**을 통해 같은 여행 화면에 반영됩니다.
+
+---
+
+## 프로젝트 목표
+
+여러 명이 함께 여행을 준비할 때 생기는 핵심 문제를 세 가지로 정의했습니다.
+
+- 각자 가능한 날짜가 달라 **공통 일정이 한눈에 보이지 않는 문제**
+- 여행 스타일과 우선순위를 말로만 공유해 **취향 차이를 파악하기 어려운 문제**
+- 숙소 후보와 투표 결과가 여러 채팅에 흩어져 **결정 과정이 길어지는 문제**
+
+TRIPTUNE은 이를 **응답 → 그룹 합의 → 숙소 후보 → 투표 → 최종 확정**의 단계형 UX로 정리했습니다.
+
+---
+
+## 핵심 사용자 흐름
+
+### 1. 여행 생성 · 초대
+
+주최자가 여행 이름과 후보 기간을 설정하면 초대 링크가 생성됩니다.  
+참여자는 별도 회원가입 없이 닉네임만 입력해 같은 여행에 참여합니다.
+
+### 2. 날짜 · 취향 응답
+
+각 날짜를 **가능 / 미정 / 불가**로 표시하고 여행 취향을 입력합니다.
+
+응답을 저장하면 불필요하게 홈으로 돌아가지 않고 바로 **그룹 합의 화면으로 이동**해, 자신의 응답이 전체 결과에 어떻게 반영됐는지 확인할 수 있도록 구성했습니다.
+
+### 3. 그룹 합의
+
+참여자의 응답을 집계해 다음 정보를 한 화면에서 비교할 수 있습니다.
+
+- 날짜별 가능·미정·불가 인원
+- 연속으로 여행 가능한 날짜 후보
+- 날짜별 충돌 인원
+- 여행 취향 평균과 의견 차이가 큰 항목
+- 참여자가 직접 입력한 ‘꼭 반영할 점’
+
+자유 입력 의견은 자동 점수에 섞지 않고 별도로 보여줘, 정량화하기 어려운 요구도 놓치지 않도록 했습니다.
+
+### 4. 숙소 후보 · 투표
+
+합의된 일정 이후 숙소 후보를 등록하고 투표합니다.
+
+전체 숙소 예약뿐 아니라 여러 객실을 조합하는 경우도 입력할 수 있으며, 객실 수·총 수용 인원·총액·1인당 비용을 계산해 보여줍니다.
+
+참여 인원보다 수용 인원이 부족한 예약안은 투표 후보로 진행되지 않도록 막았습니다.
+
+### 5. 최종 확정 · 다시 조율
+
+숙소까지 확정되면 여행이 완료됩니다.
+
+하지만 실제 여행 계획은 확정 후에도 바뀔 수 있기 때문에, 주최자는 전체 데이터를 초기화하지 않고
+
+- **숙소 투표만 다시 열기**
+- **날짜·취향부터 다시 조율하기**
+
+중 필요한 단계만 선택해 재개할 수 있습니다.
+
+---
+
+## UX 설계 포인트
+
+### 가입 장벽 최소화
+
+단기적인 여행 조율 서비스에 별도 회원가입은 진입 장벽이 크다고 판단해 **Supabase Anonymous Auth**를 사용했습니다.
+
+초대 링크를 받은 사용자는 닉네임 입력만으로 바로 참여할 수 있습니다.
+
+### 역할에 따른 권한 분리
+
+모든 참여자가 같은 화면을 사용하지만 행동 권한은 다르게 설계했습니다.
+
+- **주최자** — 합의 확정, 투표 시작, 최종 확정, 조율 재개, 여행 삭제
+- **참여자** — 날짜·취향 응답, 숙소 후보 등록, 투표
+
+UI에서 버튼을 숨기는 것에 그치지 않고 서버 RPC와 RLS에서도 권한을 확인하도록 구성했습니다.
+
+### 단계가 바뀌어도 맥락 유지
+
+여행 계획은 한 번에 끝나는 흐름이 아니기 때문에 이전 단계의 정보를 최대한 유지하도록 설계했습니다.
+
+예를 들어 날짜를 다시 조율하는 동안 숙소 단계는 잠기지만 기존 숙소 후보 자체는 삭제하지 않습니다.
+
+### 실시간 협업 + 보정 로직
+
+Realtime 이벤트로 다른 사용자의 응답과 투표를 즉시 반영합니다.
+
+구독 오류나 이벤트 유실로 화면이 오래 멈추는 경우를 줄이기 위해 구독 상태를 감지해 재연결하고, 화면이 활성화된 동안 주기적으로 서버 상태와 다시 맞추는 보정 로직도 추가했습니다.
+
+---
+
+## 프론트엔드 구현 포인트
+
+### 합의 계산 로직을 UI에서 분리
+
+날짜 집계, 연속 일정 후보, 취향 평균, 충돌 판정, 투표 집계처럼 화면과 독립적으로 계산할 수 있는 로직은 컴포넌트 내부에 두지 않고 순수 함수로 분리했습니다.
+
+```text
+UI
+ ↓
+trip domain logic
+ ↓
+Supabase
+```
+
+이 구조로 계산 로직을 단위 테스트하기 쉬워졌고, UI 변경과 비즈니스 규칙 변경의 영향을 분리했습니다.
+
+### 화면 전환 성능 개선
+
+초기에는 탭이나 화면을 이동할 때 동일한 여행 데이터를 반복해서 조회해 체감 지연이 있었습니다.
+
+이를 줄이기 위해
+
+- 요청 단위 메모이제이션
+- 서로 독립적인 데이터 요청 병렬화
+- 라우터 캐시와 로딩 범위 정리
+- 저장 성공 후 전체 새로고침 대신 클라이언트 라우팅
+
+을 적용했습니다.
+
+### 서버 상태와 사용자 오류 구분
+
+데이터 조회 실패를 단순히 ‘여행이 없음’으로 처리하면 사용자가 실제 원인을 알 수 없었습니다.
+
+여행이 존재하지 않는 상태와 일시적인 서버 오류를 분리해, 실패 시 다시 시도할 수 있는 오류 화면을 보여주도록 수정했습니다.
+
+### 외부 숙소 링크 처리
+
+숙소 링크에서 OG 메타데이터를 읽어 후보 정보를 보여주는 API를 구현했습니다.
+
+외부 URL을 서버에서 요청하는 기능인 만큼 내부 주소 접근을 막는 SSRF 방어 로직을 함께 적용했습니다.
+
+---
+
+## 문제 해결 사례
+
+### 초대 링크가 처음 접속한 사용자에게 열리지 않던 문제
+
+익명 로그인은 ‘여행 참여’ 시점에 생성되는데, 초대 정보를 가져오는 RPC가 인증된 사용자에게만 허용되어 있었습니다.
+
+초대 토큰으로 필요한 정보만 반환하는 함수의 권한을 조정해 **세션이 없는 최초 방문자도 초대 화면을 볼 수 있도록 수정**했습니다.
+
+### Realtime 구독이 실패하면 화면이 갱신되지 않던 문제
+
+구독 상태를 확인하지 않아 채널 오류나 timeout이 발생해도 UI가 그대로 멈춰 있었습니다.
+
+구독 상태를 감지해 백오프로 재연결하고, 재연결 후 놓친 데이터를 다시 조회하도록 변경했습니다.
+
+### 확정 이후 계획을 변경할 수 없던 문제
+
+최종 확정을 ‘끝 상태’로만 처리하면 실제 여행 계획 변경에 대응하기 어려웠습니다.
+
+기존 데이터를 보존하면서 필요한 단계만 되돌릴 수 있도록 조율 재개 기능을 설계하고, 서버 함수에서 권한과 현재 상태를 함께 검증하도록 구현했습니다.
+
+---
 
 ## 기술 스택
 
-- Next.js 16 (App Router) + TypeScript
-- Tailwind CSS v4
-- Supabase (Postgres, Anonymous Auth, Realtime, RLS)
-- React Hook Form + Zod
-- Vitest (단위 테스트) + Playwright (E2E 테스트)
-
-## 로컬 개발
-
-### 1. 환경 변수
-
-`.env.example`을 `.env.local`로 복사하고 본인의 Supabase 프로젝트 값으로 채웁니다.
-
-```bash
-cp .env.example .env.local
-```
-
-- `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`는 Supabase 대시보드의 **Project Settings → API**에서 확인합니다.
-- anon(publishable) key는 클라이언트에 노출돼도 안전하도록 설계된 키입니다 (실제 접근 제어는 아래 RLS 정책이 담당). **앱 코드에서는 service role key를 전혀 쓰지 않습니다** (E2E 테스트 데이터 정리에만 선택적으로 쓰이며, Node 쪽에서만 읽고 브라우저 번들에는 들어가지 않습니다).
-
-### 2. Supabase 프로젝트 준비
-
-1. [supabase.com/dashboard](https://supabase.com/dashboard)에서 새 프로젝트 생성
-2. **SQL Editor**에서 `supabase/migrations/` 의 SQL 을 **번호 순서대로 모두** 실행
-   (`0001_init.sql` 부터 최신 번호까지 — 하나라도 건너뛰면 저장이 실패합니다)
-3. **Authentication → Sign In / Providers**에서 **Anonymous Sign-Ins** 활성화
-4. (선택) **Authentication → Rate Limits**에서 익명 로그인 제한을 트래픽 규모에 맞게 조정 — 기본값은 부하 테스트나 많은 인원이 짧은 시간에 몰릴 때 막힐 수 있을 만큼 낮습니다.
-
-### 3. 실행
-
-```bash
-npm install
-npm run dev
-```
-
-[http://localhost:3000](http://localhost:3000) 접속.
-
-## 테스트
-
-TRIPTUNE은 단순 렌더링 확인이 아니라 **합의 계산 로직 → 입력 검증 → 서버 권한 → 다중 사용자 실시간 흐름**까지 단계별로 자동 검증합니다.
-
-### 검증 현황 (2026-10-01)
-
-- **Vitest 단위 테스트 105개 통과** — 날짜·취향 합의 계산, 숙소 예약안/투표 계산, validation, 포맷팅, 조율 재개 로직 등을 검증
-- **Playwright E2E 15개 시나리오 통과** — 주최자와 참여자 2명을 서로 다른 브라우저 세션으로 분리해 여행 생성부터 최종 확정·재개까지 실제 사용자 흐름 검증
-- E2E 실행 전 **Supabase preflight 검사**로 서버 연결, 키, 익명 로그인, 마이그레이션, RPC 권한 문제를 브라우저 실행 전에 확인
-- 자동 테스트를 실제 환경에서 돌리는 과정에서 **초대 링크 RPC 권한 문제**, **Realtime 구독 실패 시 화면이 갱신되지 않던 문제**, **조회 오류가 '여행 없음'으로 처리되던 문제**를 발견해 수정
-- 운영 데이터 보호를 위해 E2E는 별도 `E2E_*` 환경변수를 사용하며, 운영 Supabase를 대상으로 실행되지 않도록 안전장치를 둠
-
-| 명령어 | 하는 일 |
+| 영역 | 사용 기술 |
 | --- | --- |
-| `npm run test` | 기본 테스트 — 단위 테스트(Vitest) |
-| `npm run test:unit` | 단위 테스트만 |
-| `npm run test:e2e` | E2E(Playwright) headless 실행 |
-| `npm run test:e2e:ui` | Playwright UI 모드 (단계별로 되감아 보기) |
-| `npm run test:e2e:headed` | 실제 브라우저 창을 보면서 실행 |
-| `npm run test:all` | 타입 검사 → 린트 → 단위 테스트 → 빌드 → E2E |
-| `npm run typecheck` | `tsc --noEmit` |
+| Framework | Next.js 16 · App Router |
+| Language | TypeScript |
+| UI | React 19 · Tailwind CSS v4 · Lucide React |
+| Form | React Hook Form · Zod |
+| Backend / DB | Supabase · Postgres |
+| Auth | Supabase Anonymous Auth |
+| Realtime | Supabase Realtime |
+| Security | Row Level Security · RPC |
+| Test | Vitest · Playwright |
+| CI | GitHub Actions |
+| Deploy | Vercel |
 
-### 단위 테스트
+---
 
-데이터베이스도 브라우저도 필요 없습니다. 순수 계산 로직만 검증합니다.
+## 테스트 · 품질 관리
 
-```bash
-npm run test:unit
-```
+테스트 자체가 프로젝트의 목적은 아니지만, **여러 사용자의 상태가 연결되는 서비스**라 회귀 오류를 막기 위해 핵심 흐름을 자동화했습니다.
 
-- `src/lib/trip/consensus.test.ts` — 날짜별 가능·미정·불가 집계, 연속 날짜 후보 계산,
-  날짜별 충돌 인원, 취향 평균·충돌 판정, 한 줄 요약, **자유 입력(꼭 반영할 점)이 자동 점수에서 제외되는지**
-- `src/lib/trip/stay.test.ts` — 전체/객실 예약안 계산(객실 수·총 수용 인원·총액·1인당),
-  수용 인원 부족 판정, 동점 투표와 미투표자 처리
-- `src/lib/trip/format.test.ts` · `calendar.test.ts` — 금액·기간 표기, 달력 격자
-- `src/lib/validation/trip.test.ts` · `accommodation.test.ts` — 후보 기간 60일 상한, 예약안 입력 규칙
-- `src/lib/trip/reopen.test.ts` — 조율 재개 배너·라벨
-- `src/lib/server/link-preview.test.ts` — og 태그 파싱
+- **Vitest 단위 테스트 105개**
+  - 날짜·취향 합의 계산
+  - 숙소 예약안 및 투표 계산
+  - 입력 검증
+  - 달력·포맷팅
+  - 조율 재개 로직
+  - 링크 미리보기 파싱
+- **Playwright E2E 15개 시나리오**
+  - 주최자 + 참여자 A + 참여자 B를 독립된 브라우저 세션으로 실행
+  - 여행 생성 → 초대 → 응답 → 그룹 합의 → 숙소 투표 → 최종 확정 → 재조율 검증
+  - 잘못된 초대 링크, 닉네임 중복, 저장 실패, 권한 차단 등 예외 흐름 검증
+- GitHub Actions에서 타입 검사 → 린트 → 단위 테스트 → 프로덕션 빌드를 자동 실행
+- 테스트용 Supabase가 설정된 경우 E2E까지 실행
 
-### E2E 테스트
+테스트를 실제 환경에서 돌리는 과정에서 **초대 RPC 권한, Realtime 갱신, 오류 상태 처리 문제를 발견하고 제품 코드까지 수정**했습니다.
 
-핵심 사용자 흐름 전체를 주최자·참여자 A·참여자 B 세 개의 독립 브라우저 세션으로 검증합니다.
+### 테스트 명령어
 
-| 파일 | 검증하는 흐름 |
+| 명령어 | 설명 |
 | --- | --- |
-| `e2e/scenario-a-consensus.spec.ts` | 여행 생성 → 초대 → 세 사람 응답 → 저장 후 그룹 합의 자동 이동 → 임시 합의 표시 → Realtime 갱신 → 주최자 확정 |
-| `e2e/scenario-b-stay.spec.ts` | 숙소 전체/객실 예약안 등록과 계산, 수용 인원 부족 차단, 투표와 Realtime 결과 공개, 참여자 권한, 최종 확정 |
-| `e2e/scenario-c-reopen.spec.ts` | 확정 이후 `숙소 투표만` / `날짜·취향부터` 재개, 데이터 보존, 다른 브라우저 실시간 반영 |
-| `e2e/scenario-d-errors.spec.ts` | 잘못된 초대 링크, 없는 여행, 닉네임 중복, 저장 실패, 주최자 전용 RPC 직접 호출, 나가기·삭제, 새로고침·뒤로가기 |
+| `npm run test:unit` | Vitest 단위 테스트 |
+| `npm run test:e2e` | Playwright E2E |
+| `npm run test:e2e:ui` | Playwright UI 모드 |
+| `npm run test:all` | 타입 → 린트 → 단위 테스트 → 빌드 → E2E |
+| `npm run typecheck` | TypeScript 타입 검사 |
 
-#### 1. 테스트용 Supabase 준비
-
-**운영 Supabase 는 자동 테스트 대상으로 쓸 수 없습니다.** 설정이 운영 주소를 가리키면
-테스트가 시작 전에 멈춥니다. 아래 중 하나를 준비하세요.
-
-**① 로컬 Supabase (권장)** — Docker Desktop 실행 필요
-
-```bash
-npm i -D supabase
-npx supabase init          # supabase/config.toml 이 없을 때만
-npx supabase start         # API URL 과 anon / service_role key 를 출력합니다
-npx supabase db reset      # supabase/migrations/*.sql 을 번호 순으로 적용
-npx supabase status        # 키를 다시 보고 싶을 때
-```
-
-`supabase/config.toml` 은 저장소에 포함되어 있고, TRIPTUNE 에 필요한 두 값이
-기본값과 다르게 설정돼 있습니다. `init` 이 이 파일을 새로 만들었다면 확인하세요.
-
-```toml
-[auth]
-enable_anonymous_sign_ins = true   # 기본값은 false — 끄면 참여 자체가 안 됩니다
-
-[auth.rate_limit]
-anonymous_users = 1000             # 기본값 30 — E2E 한 회차가 30명 가까이 만듭니다
-```
-
-바꾼 뒤에는 `npx supabase stop && npx supabase start` 로 다시 띄워야 적용됩니다.
-
-**② 테스트 전용 Supabase 프로젝트** — 운영과 별개로 새 프로젝트를 만들고,
-`supabase/migrations/` 의 SQL 을 번호 순으로 SQL Editor 에서 실행한 뒤
-**Authentication → Sign In / Providers → Anonymous Sign-Ins** 를 켭니다.
-이 경우 `E2E_ALLOW_REMOTE_SUPABASE=1` 을 함께 설정해야 합니다.
-
-#### 2. 환경 변수
-
-`.env.example` 의 `E2E_*` 항목을 보고 저장소 루트에 `.env.test` 를 만듭니다
-(`.env.test` 는 `.gitignore` 에 걸려 커밋되지 않습니다).
-
-```bash
-E2E_SUPABASE_URL=http://127.0.0.1:54321
-E2E_SUPABASE_ANON_KEY=sb_publishable_...
-# 정리용(선택). Node 쪽에서만 쓰이고 브라우저·리포트에는 절대 나가지 않습니다.
-E2E_SUPABASE_SERVICE_ROLE_KEY=sb_secret_...
-```
-
-> 키는 `npx supabase status` 출력의 **🔑 Authentication Keys** 표에서 가져옵니다
-> (`Publishable` → ANON_KEY, `Secret` → SERVICE_ROLE_KEY).
-> 바로 아래 **📦 Storage (S3)** 의 Access Key / Secret Key 와 헷갈리기 쉬운데,
-> 그걸 넣으면 초대 화면이 "초대 링크를 찾을 수 없어요."로 떨어집니다.
-> CLI 버전에 따라 `sb_publishable_…` 대신 `eyJ…`(JWT)로 나오기도 합니다 — 표 이름으로 고르세요.
-
-필수 변수가 없으면 런타임 오류 대신 **빠진 변수 이름과 설정 방법**을 출력하고 중단합니다.
-
-테스트 시작 전에 테스트용 Supabase 상태도 함께 확인합니다 — 서버 연결, 키 유효성,
-익명 로그인 활성화, 마이그레이션 적용 여부. 문제가 있으면 브라우저를 띄우지 않고
-**무엇을 어떻게 고쳐야 하는지** 알려주며 멈춥니다.
-
-#### 3. 실행
-
-```bash
-npx playwright install chromium   # 최초 1회
-npm run test:e2e
-```
-
-앱은 테스트가 직접 프로덕션 빌드해서 `http://127.0.0.1:3100` 에 띄웁니다
-(`next dev` 의 첫 진입 컴파일 지연 때문에 테스트가 흔들리는 것을 막기 위해서입니다).
-개발 서버 포트(3000)와 겹치지 않으므로 `npm run dev` 를 켜둔 채로도 돌릴 수 있습니다.
-
-#### 4. 테스트 데이터
-
-- 이 실행이 만든 여행에는 `[E2E-<실행ID>] 제주도` 처럼 **실행마다 다른 접두사**가 붙습니다.
-- 끝나면 그 접두사로 시작하는 여행만 지웁니다 (`e2e/support/cleanup.ts`).
-  테이블을 비우거나 접두사 없는 데이터를 건드리는 코드는 없습니다.
-- `E2E_SUPABASE_SERVICE_ROLE_KEY` 가 없으면 정리를 건너뛰고, 남은 접두사를 콘솔에 알려줍니다.
-- 각 테스트는 스스로 필요한 상태를 만들며 실행 순서에 의존하지 않습니다.
-
-#### 5. 실패했을 때
-
-```
-playwright-report/     # npx playwright show-report
-test-results/          # 실패한 테스트의 screenshot · video · trace.zip
-npx playwright show-trace test-results/<...>/trace.zip
-```
-
-trace 는 실패한 테스트에서만, video 와 screenshot 도 실패 시에만 남습니다.
-
-### GitHub Actions
-
-`.github/workflows/ci.yml` 이 push 와 pull request 마다 자동 실행됩니다.
-
-1. 의존성 설치 → 2. 타입 검사 → 3. 린트 → 4. 단위 테스트 → 5. 프로덕션 빌드
-   (여기까지는 Supabase 없이 언제나 실행됩니다)
-6. Playwright 브라우저 설치 → 7. 핵심 E2E → 8. 실패 시 리포트·trace 업로드
-   (**아래 시크릿이 등록된 저장소에서만** 실행되고, 없으면 조용히 건너뜁니다)
-
-필요한 GitHub Secrets (Settings → Secrets and variables → Actions):
-
-| Secret | 필수 | 설명 |
-| --- | --- | --- |
-| `E2E_SUPABASE_URL` | ✅ | 테스트 전용 Supabase 주소. **운영 주소를 넣지 마세요.** |
-| `E2E_SUPABASE_ANON_KEY` | ✅ | 테스트용 anon(publishable) 키 |
-| `E2E_ALLOW_REMOTE_SUPABASE` | 원격 사용 시 | 값 `1`. 로컬이 아닌 테스트 프로젝트를 쓴다는 명시적 확인 |
-| `E2E_SUPABASE_SERVICE_ROLE_KEY` | 선택 | 실행 후 테스트 데이터 정리용 |
-
-### SQL 테스트
-
-`reopen_after_confirm` 등 서버 함수의 권한·상태 전이는 Postgres 를 직접 띄워 검증합니다.
-
-```bash
-supabase/tests/run.sh     # PGPORT 환경변수로 접속 포트 지정
-```
-
-## Vercel 배포
-
-1. GitHub 저장소로 푸시
-2. [vercel.com/new](https://vercel.com/new)에서 저장소 Import (Next.js 프레임워크 자동 인식, 빌드 커맨드 변경 불필요)
-3. **Environment Variables**에 아래 두 값 추가 (Production/Preview 모두)
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-4. Deploy
-
-배포 후 별도 설정은 필요 없습니다 — 데이터베이스 스키마는 Supabase 쪽에서 이미 완결된 상태이고, 앱은 요청 도메인을 기준으로 동작합니다 (하드코딩된 URL 없음).
-
-### 배포 전 체크리스트
-
-- [ ] `supabase/migrations/` 의 모든 마이그레이션이 프로덕션 Supabase 프로젝트에 실행되어 있는지 확인
-- [ ] Anonymous Sign-Ins가 켜져 있는지 확인
-- [ ] 익명 로그인 Rate Limit이 예상 트래픽에 맞게 설정되어 있는지 확인
-- [ ] `npm run build`가 로컬에서 경고 없이 성공하는지 확인
+---
 
 ## 프로젝트 구조
 
-```
-src/app/                    라우트 (App Router)
-  ├─ page.tsx                여행 생성
-  ├─ join/[inviteToken]/     초대 링크 참여
-  ├─ trip/[tripId]/
-  │   ├─ (tabs)/              홈 · 합의 · 투표 탭 (하단 탭바 공유)
-  │   └─ respond/             날짜·취향 입력
-  └─ api/link-preview/        숙소 링크 메타데이터 조회 (SSRF 방지)
-src/components/ui/          범용 UI 컴포넌트 (Button, Modal, BottomSheet 등)
-src/components/trip/        여행 도메인 컴포넌트
-src/lib/trip/consensus.ts   날짜·취향 합의 계산 엔진 (순수 함수, 단위 테스트 대상)
-src/lib/supabase/           Supabase 클라이언트 (browser/server/proxy) + DB 타입
-supabase/migrations/        SQL 마이그레이션 (번호 순으로 실행)
-supabase/tests/             서버 함수(권한·상태 전이) SQL 테스트
+```text
+src/
+├─ app/
+│  ├─ page.tsx                    # 여행 생성
+│  ├─ join/[inviteToken]/         # 초대 링크 참여
+│  ├─ trip/[tripId]/
+│  │  ├─ (tabs)/                  # 홈 · 합의 · 투표
+│  │  └─ respond/                 # 날짜 · 취향 입력
+│  └─ api/link-preview/           # 숙소 링크 메타데이터
+│
+├─ components/
+│  ├─ ui/                         # Button · Modal · BottomSheet 등
+│  └─ trip/                       # 여행 도메인 UI
+│
+└─ lib/
+   ├─ trip/                       # 합의 · 숙소 · 포맷 계산 로직
+   ├─ validation/                 # 입력 검증
+   └─ supabase/                   # browser / server client · DB 타입
+
+supabase/
+├─ migrations/                    # DB 스키마 · RPC · RLS
+└─ tests/                         # 서버 함수 SQL 테스트
+
 e2e/
-  ├─ scenario-*.spec.ts       핵심 사용자 흐름 E2E
-  ├─ support/                 액터·플로우·환경변수·정리 유틸
-  └─ global-setup/teardown    환경 검증 · 실행별 데이터 정리
-.github/workflows/ci.yml    타입·린트·단위·빌드 (+조건부 E2E)
+├─ scenario-*.spec.ts             # 핵심 사용자 흐름
+└─ support/                       # 테스트 액터 · 환경 · 정리 유틸
 ```
+
+---
+
+## 로컬 실행
+
+### 1. 설치
+
+```bash
+npm install
+```
+
+### 2. 환경 변수
+
+`.env.example`을 참고해 `.env.local`을 생성합니다.
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+### 3. Supabase 설정
+
+`supabase/migrations/`의 SQL을 번호 순서대로 적용하고 **Anonymous Sign-Ins**를 활성화합니다.
+
+### 4. 실행
+
+```bash
+npm run dev
+```
+
+`http://localhost:3000`에서 확인할 수 있습니다.
+
+---
+
+## 배포
+
+Vercel에 배포하고 Production / Preview 환경에 아래 값을 설정합니다.
+
+```text
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+```
+
+데이터베이스 스키마와 접근 권한은 Supabase의 migration / RLS / RPC에서 관리하며, 앱 코드에는 service role key를 사용하지 않습니다.
