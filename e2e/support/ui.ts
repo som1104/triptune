@@ -16,3 +16,18 @@ export function link(page: Page, name: string | RegExp): Locator {
 export function text(page: Page, value: string | RegExp, exact?: boolean): Locator {
   return page.getByText(value, { exact }).filter({ visible: true }).first();
 }
+
+/** 입력칸도 같은 이유로 두 벌 그려질 수 있다. */
+export function field(page: Page, label: string | RegExp, exact?: boolean): Locator {
+  return page.getByLabel(label, { exact }).filter({ visible: true }).first();
+}
+
+/** 지금 보고 있는 주소가 그 링크인지 (쿼리·해시는 무시). */
+export function onPage(page: Page, link: string): boolean {
+  const strip = (value: string) => value.split("?")[0].split("#")[0].replace(/\/$/, "");
+  try {
+    return strip(new URL(page.url()).pathname) === strip(new URL(link).pathname);
+  } catch {
+    return false;
+  }
+}

@@ -51,3 +51,5 @@ next-env.d.ts
 CLAUDE.md
 AGENTS.md
 triptune-design/
+# 화면 캡처 결과물 (npm run screenshots)
+/screenshots

@@ -1,6 +1,34 @@
 import { createClient } from "@supabase/supabase-js";
 import { loadE2eEnv } from "./env";
 
+/** service role 클라이언트. 키가 없으면 null — 정리를 건너뛴다. */
+function admin() {
+  const result = loadE2eEnv();
+  if (!result.ok || !result.env.serviceRoleKey) return null;
+  return createClient(result.env.supabaseUrl, result.env.serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
+/**
+ * 이 실행이 만든 여행을 id 로 콕 집어 지운다.
+ * 제목 접두사 대신 id 를 쓰므로, 캡처용으로 제목을 깨끗하게 둔 여행도
+ * 다른 데이터를 건드릴 위험 없이 정리할 수 있다.
+ */
+export async function cleanupTripIds(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  const db = admin();
+  if (!db) {
+    console.warn(
+      `[e2e] E2E_SUPABASE_SERVICE_ROLE_KEY 가 없어 캡처용 여행을 정리하지 못했습니다: ${ids.join(", ")}`
+    );
+    return;
+  }
+  const { error } = await db.from("trips").delete().in("id", ids);
+  if (error) console.warn(`[e2e] 캡처용 여행 정리 실패: ${error.message}`);
+  else console.log(`[e2e] 캡처용 여행 ${ids.length}건을 정리했습니다.`);
+}
+
 /**
  * 이 실행이 만든 여행만 지운다.
  *

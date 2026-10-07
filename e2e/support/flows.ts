@@ -1,6 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 import { candidateRange, nickname, tripTitle } from "./data";
-import { button, text } from "./ui";
+import { button, field, onPage, text } from "./ui";
 
 export interface CreatedTrip {
   id: string;
@@ -19,15 +19,19 @@ export async function createTrip(
     participants?: number;
     nights?: number;
     spanDays?: number;
+    /** 화면 캡처처럼 제목을 그대로 보여줘야 할 때만. 정리는 호출한 쪽 책임이다. */
+    rawTitle?: string;
+    /** 닉네임 뒤에 실행 ID 를 붙이지 않는다 (캡처용). */
+    rawNickname?: boolean;
   }
 ): Promise<CreatedTrip> {
-  const title = tripTitle(opts.name);
+  const title = opts.rawTitle ?? tripTitle(opts.name);
   const range = candidateRange(opts.spanDays ?? 10);
 
   await page.goto("/new");
   await page.getByLabel("여행 이름").fill(title);
   await page.getByLabel("목적지").fill(opts.destination ?? "제주도");
-  await page.getByLabel("주최자 닉네임").fill(nickname(opts.hostNickname));
+  await page.getByLabel("주최자 닉네임").fill(opts.rawNickname ? opts.hostNickname : nickname(opts.hostNickname));
   await page.getByLabel("시작일").fill(range.start);
   await page.getByLabel("종료일").fill(range.end);
 
@@ -68,11 +72,22 @@ export async function inviteLink(page: Page): Promise<string> {
   return (await locator.innerText()).trim();
 }
 
-/** 초대 링크로 참여. 성공하면 내 날짜·취향 입력으로 이동한다. */
-export async function joinTrip(page: Page, link: string, name: string): Promise<string> {
-  await page.goto(link);
-  const nick = nickname(name);
-  await page.getByLabel("이름 또는 닉네임").fill(nick);
+/**
+ * 초대 링크로 참여. 성공하면 내 날짜·취향 입력으로 이동한다.
+ *
+ * 이미 그 초대 화면에 있으면 다시 이동하지 않는다. 같은 주소로 한 번 더
+ * 들어가면 폼이 두 벌 남는 경우가 있어서(서버가 그린 입력과 클라이언트가
+ * 다시 그린 입력), 이름 입력을 하나로 집을 수 없게 된다.
+ */
+export async function joinTrip(
+  page: Page,
+  link: string,
+  name: string,
+  opts: { raw?: boolean } = {}
+): Promise<string> {
+  if (!onPage(page, link)) await page.goto(link);
+  const nick = opts.raw ? name : nickname(name);
+  await field(page, "이름 또는 닉네임").fill(nick);
   await button(page, "여행에 참여하기").click();
   await page.waitForURL(/\/respond$/);
   return nick;
@@ -95,10 +110,13 @@ const DEFAULT_INTERESTS = { nature: "좋아요", food: "꼭 필요", cafe: "보�
 /** 날짜·취향 입력 화면을 채운다 (저장은 하지 않는다). */
 export async function fillResponse(page: Page, choice: ResponseChoice): Promise<void> {
   await expect(page.getByRole("radiogroup", { name: "표시할 상태" })).toBeVisible();
-
   await paintDays(page, "가능", choice.availableDays);
   if (choice.unavailableDays?.length) await paintDays(page, "불가", choice.unavailableDays);
+  await fillPreferences(page, choice);
+}
 
+/** 날짜를 뺀 나머지 — 관심사·스타일·자유 입력. */
+export async function fillPreferences(page: Page, choice: ResponseChoice): Promise<void> {
   const interests = { ...DEFAULT_INTERESTS, ...choice.interests };
   for (const [key, label] of [
     ["자연", interests.nature],
@@ -116,7 +134,8 @@ export async function fillResponse(page: Page, choice: ResponseChoice): Promise<
   if (choice.note) await page.getByLabel("꼭 반영할 점").fill(choice.note);
 }
 
-async function paintDays(page: Page, mode: string, days: number[]): Promise<void> {
+/** 상태를 고른 뒤 해당 날짜들을 칠한다. */
+export async function paintDays(page: Page, mode: string, days: number[]): Promise<void> {
   if (days.length === 0) return;
   await page
     .getByRole("radiogroup", { name: "표시할 상태" })

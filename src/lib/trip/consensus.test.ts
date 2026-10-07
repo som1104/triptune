@@ -321,3 +321,94 @@ describe("직접 입력 의견은 자동 점수에서 제외된다", () => {
     expect(a).toEqual(b);
   });
 });
+
+// ============================================================
+// 정원(10명)까지 — 참여자가 늘어도 집계가 맞는지.
+// ============================================================
+
+describe("10명짜리 여행", () => {
+  const ids = Array.from({ length: 10 }, (_, i) => `p${i + 1}`);
+
+  it("전원이 가능한 구간은 합의 후보, 한 명만 빠져도 조율 필요", () => {
+    const rows: DateResponseInput[] = [];
+    for (const id of ids) {
+      for (const date of ["2026-10-01", "2026-10-02", "2026-10-03"]) {
+        rows.push({ participantId: id, date, availability: "available" });
+      }
+    }
+    // p10 만 둘째 날이 불가
+    const idx = rows.findIndex((r) => r.participantId === "p10" && r.date === "2026-10-02");
+    rows[idx] = { participantId: "p10", date: "2026-10-02", availability: "unavailable" };
+
+    const byDate = new Map(
+      computeDateCandidates("2026-10-01", "2026-10-03", 1, ids, rows).map((c) => [c.startDate, c])
+    );
+    expect(byDate.get("2026-10-01")).toMatchObject({
+      fullyAvailableCount: 10,
+      unavailableCount: 0,
+      label: "합의 후보",
+    });
+    expect(byDate.get("2026-10-02")).toMatchObject({
+      fullyAvailableCount: 9,
+      unavailableCount: 1,
+      label: "조율 필요",
+    });
+  });
+
+  it("연속 3일 창에서도 10명이 그대로 세어진다", () => {
+    const rows: DateResponseInput[] = ids.flatMap((id) =>
+      ["2026-10-01", "2026-10-02", "2026-10-03"].map((date) => ({
+        participantId: id,
+        date,
+        availability: "available" as const,
+      }))
+    );
+    const [top] = computeDateCandidates("2026-10-01", "2026-10-03", 3, ids, rows);
+    expect(top).toMatchObject({
+      startDate: "2026-10-01",
+      endDate: "2026-10-03",
+      fullyAvailableCount: 10,
+      unavailableCount: 0,
+    });
+    // 10명 × 3일 × 가능(2점)
+    expect(top.totalScore).toBe(60);
+  });
+
+  it("10명 중 1명만 반대해도 충돌로 잡힌다", () => {
+    const responses: PreferenceResponseInput[] = ids.map((id, i) => ({
+      participantId: id,
+      nature: i === 9 ? -2 : 2,
+      food: 1,
+      cafe: 0,
+      activity: 1,
+      pace: "relaxed",
+      spendingStyle: "balanced",
+    }));
+    const result = computePreferenceConsensus(responses);
+    expect(result.nature.classification).toBe("conflict");
+    expect(result.nature.responseCount).toBe(10);
+    expect(result.nature.counts[2]).toBe(9);
+    expect(result.nature.counts[-2]).toBe(1);
+  });
+
+  it("10명이 5 대 5 로 갈린 스타일은 '갈림'으로 둔다", () => {
+    const paces = [
+      ...Array.from({ length: 5 }, () => "relaxed" as const),
+      ...Array.from({ length: 5 }, () => "packed" as const),
+    ];
+    const consensus = computeStyleConsensus(paces);
+    expect(consensus.isSplit).toBe(true);
+    expect(consensus.mode).toBeNull();
+    expect(consensus.counts.relaxed).toBe(5);
+  });
+
+  it("10명 분량의 날짜 상태도 합이 맞는다", () => {
+    const range = Array.from({ length: 30 }, (_, i) => `2026-10-${String(i + 1).padStart(2, "0")}`);
+    const states = Object.fromEntries(
+      range.slice(0, 12).map((iso, i) => [iso, i % 2 === 0 ? "available" : "unavailable"] as const)
+    );
+    const counts = countDateStates(range, states);
+    expect(counts).toEqual({ available: 6, tentative: 18, unavailable: 6 });
+    expect(counts.available + counts.tentative + counts.unavailable).toBe(30);
+  });
+});

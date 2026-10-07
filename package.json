@@ -10,9 +10,10 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:unit": "vitest run",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
-    "test:e2e:headed": "playwright test --headed",
+    "test:e2e": "playwright test --project=mobile --project=desktop",
+    "test:e2e:ui": "playwright test --project=mobile --project=desktop --ui",
+    "test:e2e:headed": "playwright test --project=mobile --project=desktop --headed",
+    "screenshots": "playwright test --project=shots-mobile --project=shots-desktop",
     "test:all": "npm run typecheck && npm run lint && npm run test:unit && npm run build && npm run test:e2e"
   },
   "dependencies": {
@@ -35,7 +36,6 @@
     "@vitejs/plugin-react": "^6.1.1",
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
-    "supabase": "^2.118.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^5.0.1"

@@ -46,12 +46,28 @@ export default defineConfig({
     timezoneId: "Asia/Seoul",
   },
 
+  /* 화면 캡처 투어(screenshots.spec.ts)는 검증이 아니라 결과물이 목적이라
+     평소 실행에서는 빼고, npm run screenshots 로만 돈다. */
   projects: [
-    { name: "mobile", use: { ...devices["Pixel 7"] } },
+    {
+      name: "mobile",
+      use: { ...devices["Pixel 7"] },
+      testIgnore: /screenshots\.spec\.ts/,
+    },
     {
       name: "desktop",
       use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
       testMatch: /scenario-a-.*\.spec\.ts/,
+    },
+    {
+      name: "shots-mobile",
+      use: { ...devices["Pixel 7"] },
+      testMatch: /screenshots\.spec\.ts/,
+    },
+    {
+      name: "shots-desktop",
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
+      testMatch: /screenshots\.spec\.ts/,
     },
   ],
 

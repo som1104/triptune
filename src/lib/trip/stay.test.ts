@@ -175,3 +175,61 @@ describe("votePercentage", () => {
     expect(votePercentage(3, 3)).toBe(100);
   });
 });
+
+/* ============================================================
+   정원 가까이 — 한 여행은 최대 10명이다. 작은 수에서만 맞는 계산이
+   아니라는 것을 큰 쪽에서도 확인한다.
+   ============================================================ */
+
+describe("인원이 많은 여행", () => {
+  it("10명 정원에 딱 맞는 객실 구성을 통과시킨다", () => {
+    const rooms = [room("4인 온돌", 2, 4, 200000), room("디럭스 트윈", 1, 2, 150000)];
+    const totals = roomTotals(rooms);
+    expect(totals).toEqual({ roomCount: 3, capacity: 10, totalPrice: 550000 });
+    expect(capacityCheck(totals.capacity, 10)).toEqual({ shortBy: 0, ok: true });
+  });
+
+  it("한 명이라도 모자라면 막고, 몇 명 모자란지 알려준다", () => {
+    const rooms = [room("4인 온돌", 2, 4, 200000)]; // 8명
+    expect(capacityCheck(roomTotals(rooms).capacity, 10)).toEqual({ shortBy: 2, ok: false });
+  });
+
+  it("1인당 금액은 10명으로 나눠도 올림이라 모자라지 않는다", () => {
+    // 550,000 / 10 = 55,000 (딱 떨어짐)
+    expect(priceLine(550000, 10)).toBe("총 550,000원 · 1인 약 55,000원");
+    // 1,000,003 / 10 = 100,000.3 → 올림
+    expect(priceLine(1000003, 10)).toBe("총 1,000,003원 · 1인 약 100,001원");
+  });
+
+  it("10명이 모두 투표해도 집계가 흔들리지 않는다", () => {
+    const stays = [{ id: "a" }, { id: "b" }, { id: "c" }];
+    const votes = [
+      ...Array.from({ length: 5 }, () => ({ accommodation_id: "a" })),
+      ...Array.from({ length: 4 }, () => ({ accommodation_id: "b" })),
+      { accommodation_id: "c" },
+    ];
+    const t = tallyVotes(stays, votes, 10);
+    expect(t.validVotes).toBe(10);
+    expect(t.remainingVoters).toBe(0);
+    expect(t.topCount).toBe(5);
+    expect([...t.topIds]).toEqual(["a"]);
+    expect(t.isTie).toBe(false);
+    expect(votePercentage(5, 10)).toBe(50);
+  });
+
+  it("10명이 5 대 5 로 갈리면 동점으로 본다", () => {
+    const stays = [{ id: "a" }, { id: "b" }];
+    const votes = [
+      ...Array.from({ length: 5 }, () => ({ accommodation_id: "a" })),
+      ...Array.from({ length: 5 }, () => ({ accommodation_id: "b" })),
+    ];
+    const t = tallyVotes(stays, votes, 10);
+    expect(t.isTie).toBe(true);
+    expect([...t.topIds].sort()).toEqual(["a", "b"]);
+  });
+
+  it("10명 중 3명만 투표했으면 남은 7명을 센다", () => {
+    const t = tallyVotes([{ id: "a" }], Array.from({ length: 3 }, () => ({ accommodation_id: "a" })), 10);
+    expect(t.remainingVoters).toBe(7);
+  });
+});
